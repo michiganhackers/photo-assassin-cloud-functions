@@ -15,3 +15,7 @@ See also:
 - Node.js >= 10.0.0
 - NPM
 - Firebase SDK (usually installed via NPM)
+
+## Backend Interface
+For details about the backend interface and how to use it, see
+[BackendInterface.md](./BackendInterface.md).
