@@ -55,3 +55,34 @@ within the designated game(s).
 **Implementation Status**: Implemented naively. Does not yet account for images
 that are too big or invalid. Does not handle invalid gameIDs well. *Not tested
 at all*.
+
+## leaveGame
+**Description**: Used to leave a game that the user no longer wishes to
+participate in. If the game is active and is left with fewer than 3 players, the
+game will end.
+
+**Authentication**: Requires authentication as a valid user who is a player
+within the designated game.
+
+**Parameters**:
+
+  - `gameID` - `String` - The unique ID of the game to leave. The game must have
+     a status of `notStarted` or `started` (it cannot be already `ended`).
+
+**Implementation Status**: Not yet implemented.
+
+## submitVote
+**Description**: Used to submit a vote on whether a snipe was valid.
+
+**Authentication**: Requires authentication as a valid user who is alive within
+the designated game and has not yet voted on this snipe.
+
+**Parameters**:
+
+  - `gameID` - `String` - The unique ID of the game in which to vote.
+  - `snipeID` - `String` - The unique ID of the snipe to vote on. The snipe must
+     have a status of `voting`.
+  - `vote` - `Boolean` - The actual vote. Should be `true` if the user thinks
+     the picture is a valid snipe of the target, or `false` otherwise.
+
+**Implementation Status**: Not yet implemented.
