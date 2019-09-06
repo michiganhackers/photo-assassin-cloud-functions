@@ -2,7 +2,7 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const constants = require("./constants");
-const { shuffle } = require("./utilities");
+const { isValidUniqueString, shuffle } = require("./utilities");
 
 // Globals
 const firestore = admin.firestore();
@@ -18,7 +18,7 @@ module.exports = functions.https.onCall(async (data, context) => {
   }
   const uid = context.auth.uid;
   const gameID = data.gameID;
-  if (typeof gameID !== "string" || gameID.test(/[^0-9a-zA-Z]/)) {
+  if (!isValidUniqueString(gameID)) {
     throw new functions.https.HttpsError(
       "invalid-argument", "Invalid (or no) gameID provided to startGame"
     );
