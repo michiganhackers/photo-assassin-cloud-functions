@@ -3,7 +3,7 @@ This document outlines the interface for Photo Assassin's backend &mdash; i.e.
 how to use each cloud function.
 
 ## createGame
-**Description**: Used to create a new game. The game will be in the notStarted
+**Description**: Used to create a new game. The game will be in the `notStarted`
 state after creation.
 
 **Authentication**: Requires authentication as any valid user.
@@ -28,8 +28,8 @@ designated as the owner (i.e. creator) of the game to start.
 **Parameters**:
 
  - `gameID` - `String` - The unique ID of the game to start. Can be obtained
-    from the users list of current lobbies, and corresponds to the document name
-    for each entry within the global `games` collection. The game must:
+    from the user's list of current lobbies, and corresponds to the document
+    name for each entry within the global `games` collection. The game must:
      - Have a status of `notStarted`.
      - Have at least 3 players in the lobby.
 
@@ -48,8 +48,9 @@ within the designated game(s).
  - `gameIDs` - `[String]` - An array of unique IDs of games to submit the snipe
     to. The authenticated user must be alive within all of the games. Each game
     must have a status of `started`.
- - `base64JPEG` - `String` - A Base64-encoded representation of the image for
-    the snipe. Should **not** contain `data:image/jpeg;base64,` like a data URI.
+ - `base64JPEG` - `String` - A Base64-encoded representation of the JPEG image
+    for the snipe. Should **not** contain `data:image/jpeg;base64,` like a data
+    URI would.
 
 **Implementation Status**: Implemented naively. Does not yet account for images
 that are too big or invalid. Does not handle invalid gameIDs well. *Not tested
