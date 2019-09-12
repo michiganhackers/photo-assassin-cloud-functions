@@ -63,7 +63,7 @@ module.exports = functions.https.onCall(async (data, context) => {
 
   await gameRef.update({
     startTime: new Date(),
-    status: constants.string.started
+    status: constants.status.started
   });
 
   return {
