@@ -86,3 +86,13 @@ the designated game and has not yet voted on this snipe.
      the picture is a valid snipe of the target, or `false` otherwise.
 
 **Implementation Status**: Not yet implemented.
+
+## invalidateSnipes
+**Description**: Used to invalidate snipes that were submitted against a user
+in the last *n* minutes, where *n* is a to-be-determined constant.
+
+**Authentication**: Requires authentication as a valid user.
+
+**Parameters**: None.
+
+**Implementation Status**: Not yet implemented.
