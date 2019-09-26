@@ -15,9 +15,16 @@ module.exports = functions.https.onCall(async (data, context) => {
       "auth-failed", "No authentication was provided"
     );
   }
+  if (typeof data.maxPlayers !== "number" ||
+      data.maxPlayers < constants.minPlayers) {
+    throw new functions.https.HttpsError(
+      "invalid-argument", "An invalid maxPlayers number was provided"
+    );
+  }
   const uid = context.auth.uid;
   const documentRef = await gamesRef.add({
-    name: data.name,
+    maxPlayers: data.maxPlayers,
+    name: String(data.name),
     status: constants.status.notStarted
   });
 

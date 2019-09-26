@@ -22,6 +22,8 @@ state after creation.
 
 **Parameters**:
 
+ - `maxPlayers` - `Number` - The maximum number of players to have in the game.
+   Must be at least 3.
  - `name` - `String` - The name of the new game.
  - `invitedUsernames` - `[String]` - An array containing unique usernames for
     users who should be invited to the game initially. The array should not
