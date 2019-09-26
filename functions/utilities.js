@@ -31,3 +31,9 @@ exports.generateUniqueString = () => {
 exports.isValidUniqueString = (string) => {
   return typeof string === "string" && !(/[^0-9a-zA-Z]/).test(string);
 };
+
+exports.assert = (condition) => {
+  if (!condition) {
+    throw new Error("Assertion failed");
+  }
+};

@@ -2,6 +2,20 @@
 This document outlines the interface for Photo Assassin's backend &mdash; i.e.
 how to use each cloud function.
 
+## addUser
+**Description**: Used to add the data for a new user. The user must already be
+authenticated for this to occur.
+
+**Authentication**: Requires authentication as the given user.
+
+**Parameters**:
+
+ - `displayName` - `String` - The user's display name.
+ - `profilePicUrl` - `String` - The URL of the user's profile picture. This
+    should be somewhere within firebasestorage.googleapis.com.
+
+**Implementation Status**: This function is fully implemented, but not tested.
+
 ## createGame
 **Description**: Used to create a new game. The game will be in the `notStarted`
 state after creation.
