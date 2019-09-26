@@ -11,8 +11,6 @@ authenticated for this to occur.
 **Parameters**:
 
  - `displayName` - `String` - The user's display name.
- - `profilePicUrl` - `String` - The URL of the user's profile picture. This
-    should be somewhere within firebasestorage.googleapis.com.
 
 **Implementation Status**: This function is fully implemented, but not tested.
 
