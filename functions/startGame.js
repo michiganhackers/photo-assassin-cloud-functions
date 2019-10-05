@@ -13,7 +13,7 @@ const usersRef = firestore.collection("users");
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
-      "auth-failed", "No authentication was provided"
+      "unauthenticated", "No authentication was provided"
     );
   }
   const uid = context.auth.uid;
@@ -27,12 +27,12 @@ module.exports = functions.https.onCall(async (data, context) => {
   const currentGame = await gameRef.get();
   if (!currentGame.exists) {
     throw new functions.https.HttpsError(
-      "invalid-argument", "Invalid (or no) gameID provided to startGame"
+      "failed-precondition", "Invalid gameID " + gameID + " provided to startGame"
     );
   }
   if (currentGame.get("status") !== constants.status.notStarted) {
     throw new functions.https.HttpsError(
-      "invalid-state", "Cannot start a game that has already been started"
+      "failed-precondition", "Cannot start a game that has already been started"
     );
   }
   const gamePlayersRef = gameRef.collection("players");
@@ -40,13 +40,13 @@ module.exports = functions.https.onCall(async (data, context) => {
   const userInGameData = await userInGameRef.get();
   if (!userInGameData.exists || !userInGameData.get("isOwner")) {
     throw new functions.https.HttpsError(
-      "auth-failed", "User does not have authentication to start game"
+      "unauthenticated", "User does not have authentication to start game"
     );
   }
   const playerRefs = await gamePlayersRef.listDocuments();
   if (playerRefs.length < constants.minPlayers) {
     throw new functions.https.HttpsError(
-      "invalid-state", "Cannot start a game with fewer than " +
+      "failed-precondition", "Cannot start a game with fewer than " +
         constants.minPlayers + " players."
     );
   }

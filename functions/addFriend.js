@@ -9,7 +9,7 @@ const usersRef = firestore.collection("users");
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
-      "auth-failed", "No authentication was provided"
+      "unauthenticated", "No authentication was provided"
     );
   }
   const uid = context.auth.uid;
@@ -22,7 +22,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     await Promise.all([p1, p2])
   }
   catch (e) {
-    throw new functions.https.HttpsError("operation-failed", `Unable to create friendship between users with uids ${uid} and ${data.friendToAddId}`)
+    throw new functions.https.HttpsError("unknown", `Unable to create friendship between users with uids ${uid} and ${data.friendToAddId}`)
   }
   return true;
 });

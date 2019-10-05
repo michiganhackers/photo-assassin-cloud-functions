@@ -12,7 +12,7 @@ const usersRef = firestore.collection("users");
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
-      "auth-failed", "No authentication was provided"
+      "unauthenticated", "No authentication was provided"
     );
   }
   if (typeof data.maxPlayers !== "number" ||

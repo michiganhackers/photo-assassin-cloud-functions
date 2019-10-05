@@ -18,7 +18,7 @@ const usersRef = firestore.collection("users");
 module.exports = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
-      "auth-failed", "No authentication was provided"
+      "unauthenticated", "No authentication was provided"
     );
   }
   const uid = context.auth.uid;
@@ -72,20 +72,20 @@ module.exports = functions.https.onCall(async (data, context) => {
     const game = await gameRef.get();
     if (!game.exists) {
       throw new functions.https.HttpsError(
-        "invalid-argument",
+        "failed-precondition",
         "Invalid gameID " + gameID + " provided to submitSnipe"
       );
     }
     if (game.get("status") !== constants.status.started) {
       throw new functions.https.HttpsError(
-        "invalid-argument",
+        "failed-precondition",
         "Game with gameID " + gameID + " is not in progress"
       );
     }
     const userInGame = await gameRef.collection("players").doc(uid).get();
     if (!userInGame.exists || !userInGame.alive) {
       throw new functions.https.HttpsError(
-        "invalid-argument",
+        "failed-precondition",
         "User with UID " + uid + " is not alive in game with gameID " + gameID
       );
     }
