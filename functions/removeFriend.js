@@ -17,13 +17,13 @@ module.exports = functions.https.onCall(async (data, context) => {
   const friendToRemoveFriendsRef = usersRef.doc(data.friendToRemoveId).collection("friends");
 
   try {
-    const p1 = userFriendsRef.doc(data.friendToRemoveId).delete()
-    const p2 = friendToRemoveFriendsRef.doc(uid).delete()
-    await Promise.all([p1, p2])
+    const p1 = userFriendsRef.doc(data.friendToRemoveId).delete();
+    const p2 = friendToRemoveFriendsRef.doc(uid).delete();
+    await Promise.all([p1, p2]);
   }
   catch (e) {
     console.log(e)
-    throw new functions.https.HttpsError("unknown", `Unable to remove friendship between users with uids ${uid} and ${data.friendToRemoveId}`)
+    throw new functions.https.HttpsError("unknown", `Unable to remove friendship between users with uids ${uid} and ${data.friendToRemoveId}`);
   }
   return true;
 });

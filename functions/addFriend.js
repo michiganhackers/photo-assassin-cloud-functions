@@ -17,12 +17,12 @@ module.exports = functions.https.onCall(async (data, context) => {
   const friendToAddFriendsRef = usersRef.doc(data.friendToAddId).collection("friends");
 
   try {
-    const p1 = userFriendsRef.doc(data.friendToAddId).create({friend: data.friendToAddId})
-    const p2 = friendToAddFriendsRef.doc(uid).create({friend: uid})
-    await Promise.all([p1, p2])
+    const p1 = userFriendsRef.doc(data.friendToAddId).create({friend: data.friendToAddId});
+    const p2 = friendToAddFriendsRef.doc(uid).create({friend: uid});
+    await Promise.all([p1, p2]);
   }
   catch (e) {
-    throw new functions.https.HttpsError("unknown", `Unable to create friendship between users with uids ${uid} and ${data.friendToAddId}`)
+    throw new functions.https.HttpsError("unknown", `Unable to create friendship between users with uids ${uid} and ${data.friendToAddId}`);
   }
   return true;
 });
