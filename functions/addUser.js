@@ -26,7 +26,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     });
   }
   catch (e) {
-    return false;
+      throw new functions.https.HttpsError("already-exists", `Tried to create a user that already exists with id ${uid}`)
   }
   return true;
 });
