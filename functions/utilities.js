@@ -29,7 +29,9 @@ exports.generateUniqueString = () => {
 };
 
 exports.isValidUniqueString = (string) => {
-  return typeof string === "string" && !(/[^0-9a-zA-Z]/).test(string);
+  return typeof string === "string" &&
+    string.length === uniqueStringLength &&
+    !(/[^0-9a-zA-Z]/).test(string);
 };
 
 exports.assert = (condition) => {

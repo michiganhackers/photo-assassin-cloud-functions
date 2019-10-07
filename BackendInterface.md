@@ -110,3 +110,22 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 **Parameters**: None.
 
 **Implementation Status**: Not yet implemented.
+
+## addFriend
+**Description**: Used to add a new friend to the currently logged in user.
+
+**Authentication**: Requires authentication as any valid user.
+
+**Parameters**: `friendToAddId` - `Number` - The user id of the friend to add.
+
+**Implementation Status**: This function is fully implemented. Note: Future versions of the app might use a "request/accept friend" model, requiring the use of a different cloud function.
+
+## removeFriend
+**Description**: Used to remove a friend from the currently logged in user.
+
+**Authentication**: Requires authentication as any valid user.
+
+**Parameters**: `friendToRemoveId` - `Number` - The user id of the friend to remove.
+
+**Implementation Status**: This function is fully implemented.
+

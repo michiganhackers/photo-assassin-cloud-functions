@@ -1,7 +1,6 @@
 // Imports
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
-const constants = require("./constants");
 
 // Globals
 const firestore = admin.firestore();
@@ -14,19 +13,17 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
   const uid = context.auth.uid;
-  const userRef = usersRef.doc(uid);
+  const userFriendsRef = usersRef.doc(uid).collection("friends");
+  const friendToRemoveFriendsRef = usersRef.doc(data.friendToRemoveId).collection("friends");
 
   try {
-    await userRef.create({
-      deaths: 0,
-      displayName: data.displayName,
-      id: uid,
-      kills: 0,
-      longestLifeSeconds: 0
-    });
+    const p1 = userFriendsRef.doc(data.friendToRemoveId).delete();
+    const p2 = friendToRemoveFriendsRef.doc(uid).delete();
+    await Promise.all([p1, p2]);
   }
   catch (e) {
-      throw new functions.https.HttpsError("already-exists", `Tried to create a user that already exists with id ${uid}`)
+    console.log(e)
+    throw new functions.https.HttpsError("unknown", `Unable to remove friendship between users with uids ${uid} and ${data.friendToRemoveId}`);
   }
   return true;
 });

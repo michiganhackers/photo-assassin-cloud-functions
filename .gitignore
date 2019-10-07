@@ -63,3 +63,7 @@ node_modules/
 
 # dotenv environment variables file
 .env
+
+# key for running some functions locally
+# more details here: https://firebase.google.com/docs/functions/local-emulator
+photo-assassin-app-engine-service-account-key.json
