@@ -129,3 +129,12 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Implementation Status**: This function is fully implemented.
 
+## updateDisplayName
+**Description**: Used to update the `displayName` field of the currently logged in user.
+
+**Authentication**: Requires authentication as any valid user.
+
+**Parameters**: `displayName` - `String` - The new display name.
+
+**Implementation Status**: This function is fully implemented.
+

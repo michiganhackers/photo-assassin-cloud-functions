@@ -39,3 +39,16 @@ exports.assert = (condition) => {
     throw new Error("Assertion failed");
   }
 };
+
+const minDisplayNameLength = 5;
+const maxDisplayNameLength = 20;
+exports.isValidDisplayName = (displayName) => {
+  // Reference https://regex101.com/r/gY7rO4/348 for the regex
+  // Display name must have only alphanumeric characters, spaces, hyphens, and apostrophes. 
+  // It also can’t begin or end with a space, hyphen, or apostrophe.
+  const re = RegExp("^(?![- '])(?![×Þß÷þø])[- '0-9a-zÀ-ÿ]+(?<![- '])$", "i");
+  return typeof displayName === "string" &&
+    re.test(displayName) &&
+    displayName.length >= minDisplayNameLength &&
+    displayName.length <= maxDisplayNameLength;
+}

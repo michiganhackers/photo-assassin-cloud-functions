@@ -12,3 +12,4 @@ exports.startGame = require("./startGame");
 exports.submitSnipe = require("./submitSnipe");
 exports.addFriend = require("./addFriend");
 exports.removeFriend = require("./removeFriend");
+exports.updateDisplayName = require("./updateDisplayName");
