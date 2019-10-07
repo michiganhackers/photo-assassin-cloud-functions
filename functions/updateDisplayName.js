@@ -25,7 +25,7 @@ module.exports = functions.https.onCall(async (data, context) => {
         await usersRef.doc(uid).update({ displayName: data.displayName });
     }
     catch (e) {
-        throw new functions.https.HttpsError("unknown", `Unable to update displayName of user with id ${uid}`)
+        throw new functions.https.HttpsError("failed-precondition", `User with id ${uid} does not exist`)
     }
     return true;
 });
