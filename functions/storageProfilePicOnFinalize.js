@@ -26,7 +26,7 @@ module.exports = functions.storage.object().onFinalize(async (object) => {
     });
   }
   catch (e) {
-    return console.error(`Failed to create signed url for file ${filePath}`)
+    return console.error(`Failed to create signed url for file ${filePath}`);
   }
 
   const uid = path.basename(filePath);
