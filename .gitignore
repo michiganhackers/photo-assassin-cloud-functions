@@ -67,3 +67,6 @@ node_modules/
 # key for running some functions locally
 # more details here: https://firebase.google.com/docs/functions/local-emulator
 photo-assassin-app-engine-service-account-key.json
+
+# key for using getSignedUrl
+functions/photo-assassin-adminsdk-service-account-key.json

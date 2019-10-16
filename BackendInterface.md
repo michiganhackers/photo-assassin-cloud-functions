@@ -1,8 +1,11 @@
 # Backend Interface
 This document outlines the interface for Photo Assassin's backend &mdash; i.e.
-how to use each cloud function.
+how to use each cloud function and what triggers exist.
 
-## addUser
+## Functions
+
+### addUser
+
 **Description**: Used to add the data for a new user. The user must already be
 authenticated for this to occur.
 
@@ -14,7 +17,7 @@ authenticated for this to occur.
 
 **Implementation Status**: This function is fully implemented, but not tested.
 
-## createGame
+### createGame
 **Description**: Used to create a new game. The game will be in the `notStarted`
 state after creation.
 
@@ -33,7 +36,7 @@ state after creation.
 created, but the `invitedUsernames` parameter is ignored since usernames are
 not yet implemented in the database.
 
-## startGame
+### startGame
 **Description**: Used to start an already-created game.
 
 **Authentication**: Requires authentication as a valid user who is also
@@ -50,7 +53,7 @@ designated as the owner (i.e. creator) of the game to start.
 **Implementation Status**: Fully implemented (in theory). Note that this
 function is *not* fully tested.
 
-## submitSnipe
+### submitSnipe
 **Description**: Used to submit a snipe (i.e. picture of target(s)) to one or
 more current games for consideration.
 
@@ -70,7 +73,7 @@ within the designated game(s).
 that are too big or invalid. Does not handle invalid gameIDs well. *Not tested
 at all*.
 
-## leaveGame
+### leaveGame
 **Description**: Used to leave a game that the user no longer wishes to
 participate in. If the game is active and is left with fewer than 3 players, the
 game will end.
@@ -84,8 +87,8 @@ within the designated game.
      a status of `notStarted` or `started` (it cannot be already `ended`).
 
 **Implementation Status**: Not yet implemented.
-
-## submitVote
+function
+### submitVote
 **Description**: Used to submit a vote on whether a snipe was valid.
 
 **Authentication**: Requires authentication as a valid user who is alive within
@@ -101,7 +104,7 @@ the designated game and has not yet voted on this snipe.
 
 **Implementation Status**: Not yet implemented.
 
-## invalidateSnipes
+### invalidateSnipes
 **Description**: Used to invalidate snipes that were submitted against a user
 in the last *n* minutes, where *n* is a to-be-determined constant.
 
@@ -111,7 +114,7 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Implementation Status**: Not yet implemented.
 
-## addFriend
+### addFriend
 **Description**: Used to add a new friend to the currently logged in user.
 
 **Authentication**: Requires authentication as any valid user.
@@ -120,7 +123,7 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Implementation Status**: This function is fully implemented. Note: Future versions of the app might use a "request/accept friend" model, requiring the use of a different cloud function.
 
-## removeFriend
+### removeFriend
 **Description**: Used to remove a friend from the currently logged in user.
 
 **Authentication**: Requires authentication as any valid user.
@@ -128,6 +131,7 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 **Parameters**: `friendToRemoveId` - `Number` - The user id of the friend to remove.
 
 **Implementation Status**: This function is fully implemented.
+
 
 ## updateDisplayName
 **Description**: Used to update the `displayName` field of the currently logged in user.
@@ -138,3 +142,14 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Implementation Status**: This function is fully implemented.
 
+
+## Triggers
+
+### storageProfilePicOnFinalize
+**Description**: Automatically updates the `profilePicUrl` field of a user when an image is uploaded to `/images/profile_pictures/{uid}`.
+
+**Authentication**: Requires authentication as a valid user whose user id matches the uid in the filepath `/images/profile_pictures/{uid}`.
+
+**Parameters**: None.
+
+**Implementation Status**: This trigger is fully implemented.
