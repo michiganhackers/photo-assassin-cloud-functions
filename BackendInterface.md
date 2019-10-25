@@ -86,8 +86,9 @@ within the designated game.
   - `gameID` - `String` - The unique ID of the game to leave. The game must have
      a status of `notStarted` or `started` (it cannot be already `ended`).
 
-**Implementation Status**: Not yet implemented.
-function
+**Implementation Status**: Partially implemented. Currently does not account
+for the case where the game is already started.
+
 ### submitVote
 **Description**: Used to submit a vote on whether a snipe was valid.
 
