@@ -62,6 +62,7 @@ module.exports = functions.https.onCall(async (data, context) => {
   }));
 
   await gameRef.update({
+    numberAlive: playerRefs.length,
     startTime: new Date(),
     status: constants.status.started
   });
