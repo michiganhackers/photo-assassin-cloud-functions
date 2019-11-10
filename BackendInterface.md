@@ -142,6 +142,20 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Implementation Status**: This function is partially implemented. It does not prevent duplicate display names from being created.
 
+### updateFirebaseInstanceIds
+**Description**: Used to update the `firebaseInstanceIds` field of the currently logged in user. Note that it is allowed for a user to be logged in on multiple devices and/or use the same device to log into multiple accounts.
+
+**Authentication**: Requires authentication as any valid user.
+
+**Parameters**:
+
+  - `firebaseInstanceId` - `String` - The instance id that will be added or removed
+  - `operation` - `String` - Must be either `"add"` or `"remove"`.  
+  If the value is `"add"`, the given `firebaseInstanceId` will be appended to the `firebaseInstanceIds` field of the currently logged in user. This should be done when the user logs in and when the instance ID is refreshed.  
+  If the value is `"remove"`, the given `firebaseInstanceId` will be removed from the `firebaseInstanceIds` field of the currently logged in user. This should be done when the user logs out.
+
+**Implementation Status**: This function is fully implemented, but subject to change. It might be disallowed for users to be logged in on multiple devices at the same time in the future.
+
 
 ## Triggers
 
