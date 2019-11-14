@@ -29,11 +29,12 @@ module.exports = functions.https.onCall(async (data, context) => {
     let sendVoteMessages = { send: false };
     // target gets chance to vote before everyone else
     if (snipe.get("target") === player.get("playerID")) {
-      handleTargetVote(t, data.vote, game, player, snipe, sendVoteMessages);
+      sendVoteMessages = !data.vote;
+      handleTargetVote(t, data.vote, game, snipe);
     }
     // If user isn't target, majority (of alive players) required to settle vote
     else {
-      handleNonTargetVote(t, data.vote, game, player, snipe);
+      handleNonTargetVote(t, data.vote, game, snipe);
     }
     t.update(player.ref, { pendingVotes: admin.firestore.FieldValue.arrayRemove(data.snipeID) });
     return sendVoteMessages;
@@ -71,27 +72,25 @@ async function sendVoteMessagesToAlivePlayers(gameRef, snipeData) {
   return Promise.all(...messages, ...updatePendingVotes);
 }
 
-// sendVoteMessages = {send: boolean}
-// Modifies sendVoteMessages
-function handleTargetVote(transaction, vote, game, player, snipe, sendVoteMessages) {
-  sendVoteMessages = !data.vote;
-  if (data.vote) {
+function handleTargetVote(transaction, vote, game, snipe) {
+  if (vote) {
     // assumes no writes have happened before this point in the transaction
     handleSuccessfulSnipe(transaction, game, snipe);
   }
 }
-
-function handleNonTargetVote(transaction, vote, game, player, snipe) {
-  if (data.vote) {
-    if (snipe.get("votesFor") + 1 > game.get("numberAlive") / 2) {
+function handleNonTargetVote(transaction, vote, game, snipe) {
+  if (vote) {
+    // >= and not > because don't include sniper
+    if (snipe.get("votesFor") + 1 >= game.get("numberAlive") / 2) {
       // assumes no writes have happened before this point in the transaction
       handleSuccessfulSnipe(transaction, game, snipe);
     }
     transaction.update(snipe.ref, { votesFor: admin.firestore.FieldValue.increment });
   }
   else {
-    if (snipe.get("votesAgainst") + 1 > game.get("numberAlive") / 2) {
-      handleFailedSnipe();
+    // >= and not > because don't include sniper
+    if (snipe.get("votesAgainst") + 1 >= game.get("numberAlive") / 2) {
+      handleFailedSnipe(transaction, snipe);
     }
     transaction.update(snipe.ref, { votesAgainst: admin.firestore.FieldValue.increment });
   }
@@ -103,7 +102,7 @@ async function handleSuccessfulSnipe(transaction, game, snipe) {
   const sniperUserRef = usersRef.doc(snipe.get("sniper"));
   const targetPlayerRef = game.ref.collection("players").doc(snipe.get("target"));
   const sniperPlayerRef = game.ref.collection("players").doc(snipe.get("sniper"));
-  const snipePictureRef = snipePictureRef.doc(snipe.get("pictureID"));
+  const snipePictureRef = snipePicturesRef.doc(snipe.get("pictureID"));
   const targetUserPromise = transaction.get(targetUserRef);
   const targetPlayerPromise = transaction.get(targetPlayerRef);
   const snipePicturePromise = transaction.get(snipePictureRef);
@@ -148,7 +147,7 @@ async function handleGameEnded(transaction, game) {
   deadPlayers.docs.forEach((doc, i) => transaction.update(doc.ref, { place: i + 2 }));
 }
 
-function handleFailedSnipe(transaction, game, snipe) {
+function handleFailedSnipe(transaction, snipe) {
   transaction.update(snipe.ref, { status: constants.snipeStatus.failure });
   // TODO: punish sniper somehow?
 }
