@@ -37,7 +37,7 @@ module.exports = functions.https.onCall(async (data, context) => {
         }
     }
     catch (e) {
-        throw new functions.https.HttpsError("failed-precondition", `User with id ${uid} does not exist`)
+        throw new functions.https.HttpsError("failed-precondition", `User with id ${uid} does not exist`);
     }
     return true;
 });
