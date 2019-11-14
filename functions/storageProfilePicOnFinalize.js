@@ -2,6 +2,7 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const path = require("path");
+const { getReadableImageUrl } = require("./utilities");
 
 // Globals
 const firestore = admin.firestore();
@@ -18,24 +19,13 @@ module.exports = functions.storage.object().onFinalize(async (object) => {
   }
 
   const bucket = admin.storage().bucket(object.bucket);
-  let signedUrls = null;
-  try {
-    signedUrls = await bucket.file(filePath).getSignedUrl({
-      action: "read",
-      expires: "03-09-2491"
-    });
-  }
-  catch (e) {
-    return console.error(`Failed to create signed url for file ${filePath}`);
-  }
-
   const uid = path.basename(filePath);
   try {
-    await usersRef.doc(uid).update({ profilePicUrl: signedUrls[0] });
+    const url = await getReadableImageUrl(bucket, filePath);
+    await usersRef.doc(uid).update({ profilePicUrl: url });
   }
   catch (e) {
     return console.error(`Failed to update profilePicUrl for user with id ${uid}`);
   }
-
   return null;
 });

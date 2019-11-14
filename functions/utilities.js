@@ -52,3 +52,23 @@ exports.isValidDisplayName = (displayName) => {
     displayName.length >= minDisplayNameLength &&
     displayName.length <= maxDisplayNameLength;
 }
+
+
+exports.getReadableImageUrl = (bucket, remoteFilePath) => {
+  // getSignedUrl returns the same url given the same input with
+  // the same file, so partially randomize the expiration date
+  // to produce a semi-unique url
+  // Note that all urls that refer to the same remoteFilePath will
+  // remain valid, even if the file changes
+  const expires = `01-01-${Math.floor(Math.random()*10000) + 2500}`
+  const signedUrl = bucket.file(remoteFilePath).getSignedUrl({
+    action: "read",
+    expires: expires
+  }).then(signedUrls => signedUrls[0]);
+  signedUrl.catch(e => {
+    console.error(`Failed to create signed url for file ${remoteFilePath}`);
+    throw e;
+  })
+  return signedUrl;
+}
+
