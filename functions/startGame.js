@@ -30,7 +30,7 @@ module.exports = functions.https.onCall(async (data, context) => {
       "failed-precondition", "Invalid gameID " + gameID + " provided to startGame"
     );
   }
-  if (currentGame.get("status") !== constants.status.notStarted) {
+  if (currentGame.get("status") !== constants.gameStatus.notStarted) {
     throw new functions.https.HttpsError(
       "failed-precondition", "Cannot start a game that has already been started"
     );
@@ -64,7 +64,7 @@ module.exports = functions.https.onCall(async (data, context) => {
   await gameRef.update({
     numberAlive: playerRefs.length,
     startTime: new Date(),
-    status: constants.status.started
+    status: constants.gameStatus.started
   });
 
   return {

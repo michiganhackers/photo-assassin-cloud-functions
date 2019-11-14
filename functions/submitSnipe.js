@@ -6,13 +6,14 @@ const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const constants = require("./constants");
 const { generateUniqueString, isValidUniqueString } = require("./utilities");
+const { sendMessageToUser, createSnipeVoteMessage } = require("./firebaseCloudMessagingUtilities");
+const { getReadableImageUrl } = require("./utilities");
 
 // Globals
 const firestore = admin.firestore();
 const bucket = admin.storage().bucket();
 const gamesRef = firestore.collection("games");
 const snipePicturesRef = firestore.collection("snipePictures");
-const usersRef = firestore.collection("users");
 
 // Exports
 module.exports = functions.https.onCall(async (data, context) => {
@@ -47,72 +48,81 @@ module.exports = functions.https.onCall(async (data, context) => {
     data.base64JPEG,
     { encoding: "base64" }
   );
+  const remoteFilePath = "images/snipes/" + pictureID + ".jpg"
   await bucket.upload(tempFilePath, {
-    destination: "images/snipes/" + pictureID + ".jpg"
+    destination: remoteFilePath
   });
   await fs.unlink(tempFilePath);
 
+  const snipePicUrl = await getReadableImageUrl(bucket, remoteFilePath);
+
   // Add a global snipe with a refCount so we know when to delete the actual
   //  image.
-  // TODO: If the "Add the snipes to each game" step below fails,
-  //  we will have a dangling reference!!
-  snipePicturesRef.doc(pictureID).create({ refCount: gameIDs.length });
+  await snipePicturesRef.doc(pictureID).create({ refCount: 0, pictureID: pictureID });
 
   // Add the snipes to each game.
-  await Promise.all(gameIDs.map(async (gameID) => {
-    // First, ensure that the gameID and UID are valid in this context.
-    if (!isValidUniqueString(gameID)) {
-      // TODO: Use a batch so a partial write doesn't happen here (or below).
-      throw new functions.https.HttpsError(
-        "invalid-argument",
-        "Invalid gameID " + gameID + " provided to submitSnipe"
-      );
-    }
-    const gameRef = gamesRef.doc(gameID);
-    const game = await gameRef.get();
-    if (!game.exists) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "Invalid gameID " + gameID + " provided to submitSnipe"
-      );
-    }
-    if (game.get("status") !== constants.status.started) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "Game with gameID " + gameID + " is not in progress"
-      );
-    }
-    const userInGame = await gameRef.collection("players").doc(uid).get();
-    if (!userInGame.exists || !userInGame.alive) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "User with UID " + uid + " is not alive in game with gameID " + gameID
-      );
-    }
-    const targetUID = userInGame.get("target");
-    const snipeID = generateUniqueString();
-    // Next, create a snipe in the "snipes" collection.
-    await gameRef.collection("snipes").doc(snipeID).create({
-      pictureID: pictureID,
-      sniper: uid,
-      status: "voting",
-      target: targetUID,
-      time: new Date(),
-      votesAgainst: 0,
-      votesFor: 0
-    });
-    // Finally, add pending votes for all players except the target and sniper.
-    const playersInGame = await gameRef.collection("players").listDocuments();
-    await Promise.all(playersInGame.filter((playerRef) => {
-      return playerRef.id !== uid && playerRef.id !== targetUID;
-    }).map(async (playerRef) => {
-      let pendingVotes = (await playerRef.get()).get("pendingVotes");
-      pendingVotes.push(snipeID);
-      await playerRef.update({
-        pendingVotes: pendingVotes
-      });
-    }));
+  const snipes = await Promise.all(gameIDs.map(async (gameID) => {
+    return firestore.runTransaction(async t => {
+      // First, ensure that the gameID and UID are valid in this context.
+      if (!isValidUniqueString(gameID)) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Invalid gameID " + gameID + " provided to submitSnipe"
+        );
+      }
+      const gameRef = gamesRef.doc(gameID);
+      const game = await t.get(gameRef);
+      if (!game.exists) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "Invalid gameID " + gameID + " provided to submitSnipe"
+        );
+      }
+      if (game.get("status") !== constants.gameStatus.started) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "Game with gameID " + gameID + " is not in progress"
+        );
+      }
+      const userInGame = await t.get(gameRef.collection("players").doc(uid));
+      if (!userInGame.exists || !userInGame.alive) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "User with UID " + uid + " is not alive in game with gameID " + gameID
+        );
+      }
+      const targetUID = userInGame.get("target");
+      const snipeID = generateUniqueString();
+      // Next, create a snipe in the "snipes" collection.
+      const snipeData = {
+        pictureID: pictureID,
+        sniper: uid,
+        status: constants.snipeStatus.voting,
+        target: targetUID,
+        time: new Date(),
+        votesAgainst: 0,
+        votesFor: 0,
+        snipePicUrl: snipePicUrl,
+        targetProfilePicUrl: userInGame.get("profilePicUrl"),
+        snipeID: snipeID
+      };
+      t.create(gameRef.collection("snipes").doc(snipeID), snipeData);
+
+      // Add pending vote to target and increment snipePicture refCount
+      t.update(userInGame.ref, { pendingVotes: admin.firestore.FieldValue.arrayUnion(snipeID) });
+      t.update(snipePicturesRef.doc(pictureID), { refCount: admin.firestore.FieldValue.increment });
+      return snipeData;
+    })
   }));
+
+  // Send vote notification to target(s)
+  // Note: snipe picture could contain multiple targets for different games
+  // TODO: Consolidate snipes of same target and apply their vote to all games
+  snipes.forEach(snipeData => {
+    const [payload, options] = createSnipeVoteMessage(snipeData);
+    return sendMessageToUser(snipeData.target, payload, options);
+  });
+
   return {
     pictureID: pictureID
   };

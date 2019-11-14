@@ -2,6 +2,7 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const constants = require("./constants");
+const { generateUniqueString } = require("./utilities");
 
 // Globals
 const firestore = admin.firestore();
@@ -22,10 +23,12 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
   const uid = context.auth.uid;
-  const documentRef = await gamesRef.add({
+  const gameID = generateUniqueString();
+  const documentRef = await gamesRef.doc(gameID).create({
     maxPlayers: data.maxPlayers,
     name: String(data.name),
-    status: constants.status.notStarted
+    status: constants.gameStatus.notStarted,
+    gameID: gameID
   });
 
   // TODO: Use data.invitedUsernames to "invite" players to join a game
@@ -35,7 +38,7 @@ module.exports = functions.https.onCall(async (data, context) => {
   });
 
   return {
-    gameID: documentRef.id,
+    gameID: gameID,
   };
 });
 
