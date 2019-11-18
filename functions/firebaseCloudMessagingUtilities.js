@@ -6,6 +6,11 @@ const firestore = admin.firestore();
 const messaging = admin.messaging();
 const usersRef = firestore.collection("users");
 
+const messageType = {
+    snipeVote: "snipeVote",
+    gameStarted: "gameStarted"
+};
+
 
 // Exports
 // payload: messaging.MessagingPayload
@@ -34,36 +39,38 @@ exports.sendMessageToUser = async (uid, payload, options) => {
 // Returns {payload: messaging.MessagingPayload, options?: messaging.MessagingOptions}
 exports.createSnipeVoteMessage = snipeData => {
     const payload = {
-        notification:{
-            title:"Someone has been sniped!",
-            body:"Vote if it's a success!"
-          },
-          data : {
-            gameID : snipeData.gameID,
-            snipeID : snipeData.snipeID,
-            snipePicUrl : snipeData.snipePicUrl,
-            profilePicUrl : snipeData.profilePicUrl
-          }
+        notification: {
+            title: "Someone has been sniped!",
+            body: "Vote if it's a success!"
+        },
+        data: {
+            gameID: snipeData.gameID,
+            snipeID: snipeData.snipeID,
+            snipePicUrl: snipeData.snipePicUrl,
+            profilePicUrl: snipeData.profilePicUrl,
+            messageType: messageType.snipeVote
+        }
     }
     const options = undefined;
 
-    return {payload: payload, options: options};
+    return { payload: payload, options: options };
 }
 
 // gameData = {name: string, gameID: string}
 // Returns {payload: messaging.MessagingPayload, options?: messaging.MessagingOptions}
 exports.createGameStartedMessage = gameData => {
     const payload = {
-        notification:{
-            title:`Game ${gameData.name} has been started!`,
-            body:""
-          },
-          data : {
-            gameID : gameData.gameID,
-            gameName : gameData.name
-          }
+        notification: {
+            title: `Game ${gameData.name} has been started!`,
+            body: ""
+        },
+        data: {
+            gameID: gameData.gameID,
+            gameName: gameData.name,
+            messageType: messageType.gameStarted
+        }
     }
     const options = undefined;
 
-    return {payload: payload, options: options};
+    return { payload: payload, options: options };
 }
