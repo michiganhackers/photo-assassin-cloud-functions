@@ -1,0 +1,12 @@
+service firebase.storage {
+  match /b/{bucket}/o {
+  	match /images/profile_pictures/{user} {
+    	function userMatchesAndIsImage(){
+        return request.auth.uid == user && request.resource.contentType.matches('image/.*')
+      }
+      allow read:  if request.auth.uid != null;
+    	allow create: if userMatchesAndIsImage();
+      allow update: if userMatchesAndIsImage();
+    }
+  }
+}
