@@ -112,15 +112,15 @@ module.exports = functions.https.onCall(async (data, context) => {
       t.update(userInGame.ref, { pendingVotes: admin.firestore.FieldValue.arrayUnion(snipeID) });
       t.update(snipePicturesRef.doc(pictureID), { refCount: admin.firestore.FieldValue.increment });
       return snipeData;
-    })
+    });
   }));
 
   // Send vote notification to target(s)
   // Note: snipe picture could contain multiple targets for different games
   // TODO: Consolidate snipes of same target and apply their vote to all games
   snipes.forEach(snipeData => {
-    const [payload, options] = createSnipeVoteMessage(snipeData);
-    return sendMessageToUser(snipeData.target, payload, options);
+    const {payload, options} = createSnipeVoteMessage(snipeData);
+    sendMessageToUser(snipeData.target, payload, options);
   });
 
   return {

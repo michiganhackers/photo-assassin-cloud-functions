@@ -49,3 +49,21 @@ exports.createSnipeVoteMessage = snipeData => {
 
     return {payload: payload, options: options};
 }
+
+// gameData = {name: string, gameID: string}
+// Returns {payload: messaging.MessagingPayload, options?: messaging.MessagingOptions}
+exports.createGameStartedMessage = gameData => {
+    const payload = {
+        notification:{
+            title:`Game ${gameData.name} has been started!`,
+            body:""
+          },
+          data : {
+            gameID : gameData.gameID,
+            gameName : gameData.name
+          }
+    }
+    const options = undefined;
+
+    return {payload: payload, options: options};
+}

@@ -67,7 +67,7 @@ async function sendVoteMessagesToAlivePlayers(gameRef, snipeData) {
       playerRef.update({ pendingVotes: admin.firestore.FieldValue.arrayUnion(data.snipeID) })
     );
 
-  const [payload, options] = createSnipeVoteMessage(snipeData);
+  const { payload, options } = createSnipeVoteMessage(snipeData);
   const messages = alivePlayers.map(playerRef => sendMessageToUser(playerRef.id, payload, options));
   return Promise.all(...messages, ...updatePendingVotes);
 }
@@ -98,21 +98,22 @@ function handleNonTargetVote(transaction, vote, game, snipe) {
 
 async function handleSuccessfulSnipe(transaction, game, snipe) {
   // assumes no writes have happened before this point in the transaction
+  const playersRef = game.ref.collection("players");
   const targetUserRef = usersRef.doc(snipe.get("target"));
   const sniperUserRef = usersRef.doc(snipe.get("sniper"));
-  const targetPlayerRef = game.ref.collection("players").doc(snipe.get("target"));
-  const sniperPlayerRef = game.ref.collection("players").doc(snipe.get("sniper"));
+  const targetPlayerRef = playersRef.doc(snipe.get("target"));
+  const sniperPlayerRef = playersRef.doc(snipe.get("sniper"));
   const snipePictureRef = snipePicturesRef.doc(snipe.get("pictureID"));
   const targetUserPromise = transaction.get(targetUserRef);
   const targetPlayerPromise = transaction.get(targetPlayerRef);
   const snipePicturePromise = transaction.get(snipePictureRef);
   const [targetUser, targetPlayer, snipePicture] = await Promise.all(targetUserPromise, targetPlayerPromise, snipePicturePromise);
 
-  if(snipePicture.get("refCount") === 1){
+  if (snipePicture.get("refCount") === 1) {
     transaction.delete(snipePictureRef);
   }
-  else{
-    transaction.update(snipePictureRef, {refCount: admin.firestore.FieldValue.decrement});
+  else {
+    transaction.update(snipePictureRef, { refCount: admin.firestore.FieldValue.decrement });
   }
 
   const targetLifeLength = game.get("startTime") - new Date(); //TODO: probably not correct
@@ -125,6 +126,7 @@ async function handleSuccessfulSnipe(transaction, game, snipe) {
   transaction.update(sniperPlayerRef, { kills: admin.firestore.FieldValue.increment, target: targetPlayer.get("target") });
   transaction.update(game.ref, { numberAlive: admin.firestore.FieldValue.decrement });
   transaction.update(snipe.ref, { status: constants.snipeStatus.success });
+  transaction.update(playersRef.doc(targetPlayer.get("target")), { sniper:  snipe.get("sniper")});
 
   // Note: An ended game is handled in a different transaction for simplicity reasons
   // This means that a client could see that there is only 1 player left in a game that is
@@ -145,6 +147,15 @@ async function handleGameEnded(transaction, game) {
   // Note: place is 1-indexed
   transaction.update(winner.ref, { place: 1 });
   deadPlayers.docs.forEach((doc, i) => transaction.update(doc.ref, { place: i + 2 }));
+
+  const playerRefs = await game.ref.collection("players").listDocuments();
+  playerRefs.forEach(playerRef => {
+    t.update(usersRef.doc(playerRef.id),
+      {
+        currentGames: admin.firestore.FieldValue.arrayRemove(game.ref.id),
+        completedGames: admin.firestore.FieldValue.arrayUnion(game.ref.id)
+      });
+  });
 }
 
 function handleFailedSnipe(transaction, snipe) {
