@@ -237,4 +237,11 @@ function checkPreconditions(game, player, snipe) {
       `Snipe with snipeID ${snipeID} does not have status voting in game with gameID ${gameID}`
     );
   }
+
+  if(snipe.get("sniper") === uid){
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      `Sniper with uid ${uid} tried to vote on their own snipe with snipeID ${snipeID}`
+    );
+  }
 }
