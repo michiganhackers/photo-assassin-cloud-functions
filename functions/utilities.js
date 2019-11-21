@@ -60,7 +60,7 @@ exports.getReadableImageUrl = (bucket, remoteFilePath) => {
   // to produce a semi-unique url
   // Note that all urls that refer to the same remoteFilePath will
   // remain valid, even if the file changes
-  const expires = `01-01-${Math.floor(Math.random() * 10000) + 2500}`
+  const expires = `01-01-${Math.floor(Math.random()*10000) + 2500}`
   const signedUrl = bucket.file(remoteFilePath).getSignedUrl({
     action: "read",
     expires: expires
@@ -70,18 +70,5 @@ exports.getReadableImageUrl = (bucket, remoteFilePath) => {
     throw e;
   })
   return signedUrl;
-}
-
-// useful when you want Promise.all() to fulfill when all promises
-// in the given iterable are no longer pending
-// e.g.
-// var arr = [ fetch('index.html'), fetch('http://does-not-exist') ]
-// Promise.all(arr.map(reflect)).then(function(results){
-//     var success = results.filter(x => x.status === "fulfilled");
-// });
-exports.reflect = (promise) => {
-  return promise.then(
-    v => ({ v, status: "fulfilled" }),
-    e => ({ e, status: "rejected" }));
 }
 
