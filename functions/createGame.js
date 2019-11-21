@@ -24,16 +24,17 @@ module.exports = functions.https.onCall(async (data, context) => {
   }
   const uid = context.auth.uid;
   const gameID = generateUniqueString();
-  const documentRef = await gamesRef.doc(gameID).create({
+  const gameRef = gamesRef.doc(gameID);
+  await gameRef.create({
     maxPlayers: data.maxPlayers,
-    name: String(data.name),
+    name: String(data.name), //TODO: why is this cast necessary?
     status: constants.gameStatus.notStarted,
     gameID: gameID
   });
 
   // TODO: Use data.invitedUsernames to "invite" players to join a game
-
-  await documentRef.collection("players").doc(uid).create({
+  
+  await gameRef.collection("players").doc(uid).create({
     isOwner: true
   });
 
