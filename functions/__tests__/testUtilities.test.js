@@ -1,6 +1,6 @@
 // Imports
 const admin = require("firebase-admin");
-const test_func = require("firebase-functions-test")();
+const testFunc = require("firebase-functions-test")();
 const functions = require("../index");
 const testUtils = require("./testUtilities");
 
@@ -8,12 +8,12 @@ const testUtils = require("./testUtilities");
 const firestore = admin.firestore();
 
 afterEach(() => {
-    test_func.cleanup();
-    return testUtils.deleteFirestore(firestore);
+    testFunc.cleanup();
+    return testUtils.clearFirestoreData();
 });
 
-describe("recursiveDelete", () => {
-    test("recursiveDelete('tests') deletes all documents in tests collection", async () => {
+describe("clearFirestoreData", () => {
+    test("clearFirestoreData() deletes all documents in tests collection", async () => {
         expect.assertions(6);
 
         const testsRef = firestore.collection("tests");
@@ -26,12 +26,12 @@ describe("recursiveDelete", () => {
         const docsBefore = await Promise.all(docRefs.map(ref => ref.get()));
         docsBefore.forEach(doc => expect(doc.exists).toBe(true));
 
-        await testUtils.recursiveDelete(testsRef.path, firestore);
+        await testUtils.clearFirestoreData();
         const docsAfter = await Promise.all(docRefs.map(ref => ref.get()));
         docsAfter.forEach(doc => expect(doc.exists).toBe(false));
     });
 
-    test("recursiveDelete('tests') deletes docs in tests collection and subtests subcollections", async () => {
+    test("clearFirestoreData() deletes docs in tests collection and subtests subcollections", async () => {
         expect.assertions(12)
 
         const testsRef = firestore.collection("tests");
@@ -46,12 +46,12 @@ describe("recursiveDelete", () => {
         const docsBefore = await Promise.all(allDocRefs.map(ref => ref.get()));
         docsBefore.forEach(doc => expect(doc.exists).toBe(true));
 
-        await testUtils.recursiveDelete(testsRef.path, firestore);
+        await testUtils.clearFirestoreData();
         const docsAfter = await Promise.all(allDocRefs.map(ref => ref.get()));
         docsAfter.forEach(doc => expect(doc.exists).toBe(false));
     });
 
-    test("deleteFirestore(firestore) deletes all root collections", async () => {
+    test("clearFirestoreData() deletes all root collections", async () => {
         expect.assertions(6)
 
         const addDocPromises = []
@@ -64,7 +64,7 @@ describe("recursiveDelete", () => {
         const docsBefore = await Promise.all(docRefs.map(ref => ref.get()));
         docsBefore.forEach(doc => expect(doc.exists).toBe(true));
 
-        await testUtils.deleteFirestore(firestore);
+        await testUtils.clearFirestoreData();
         const docsAfter = await Promise.all(docRefs.map(ref => ref.get()));
         docsAfter.forEach(doc => expect(doc.exists).toBe(false));
     });
@@ -72,7 +72,7 @@ describe("recursiveDelete", () => {
 
 describe("addUsers", () => {
     const usersRef = firestore.collection("users");
-    const addUserWrapped = test_func.wrap(functions.addUser);
+    const addUserWrapped = testFunc.wrap(functions.addUser);
 
     test("addUsers(3, addUser) returns 3 uids", async () => {
         expect.assertions(1);

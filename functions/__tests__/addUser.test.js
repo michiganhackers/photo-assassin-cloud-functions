@@ -1,17 +1,17 @@
 // Imports
 const admin = require("firebase-admin");
-const test_func = require("firebase-functions-test")();
+const testFunc = require("firebase-functions-test")();
 const functions = require("../index");
 const testUtils = require("./testUtilities");
 
 // Globals
 const firestore = admin.firestore();
 const usersRef = firestore.collection("users");
-const addUserWrapped = test_func.wrap(functions.addUser);
+const addUserWrapped = testFunc.wrap(functions.addUser);
 
 afterEach(() => {
-    test_func.cleanup();
-    return testUtils.deleteFirestore(firestore);
+    testFunc.cleanup();
+    return testUtils.clearFirestoreData();;
 });
 
 test("addUser creates a user with given display name and correct default values", async () => {

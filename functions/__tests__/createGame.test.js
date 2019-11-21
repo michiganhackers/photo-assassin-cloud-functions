@@ -1,6 +1,6 @@
 // Imports
 const admin = require("firebase-admin");
-const test_func = require("firebase-functions-test")();
+const testFunc = require("firebase-functions-test")();
 const functions = require("../index");
 const testUtils = require("./testUtilities");
 const {isValidUniqueString} = require("../utilities");
@@ -9,12 +9,12 @@ const constants = require("../constants");
 // Globals
 const firestore = admin.firestore();
 const gamesRef = firestore.collection("games");
-const createGameWrapped = test_func.wrap(functions.createGame);
-const addUserWrapped = test_func.wrap(functions.addUser);
+const createGameWrapped = testFunc.wrap(functions.createGame);
+const addUserWrapped = testFunc.wrap(functions.addUser);
 
 afterEach(() => {
-    test_func.cleanup();
-    return testUtils.deleteFirestore(firestore);
+    testFunc.cleanup();
+    return testUtils.clearFirestoreData();;
 });
 
 test("game created w/ single user has valid default values", async () => {
