@@ -23,7 +23,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     const gamePromise = t.get(gameRef);
     const playerPromise = t.get(gameRef.collection("players").doc(uid));
     const snipePromise = t.get(gameRef.collection("snipes").doc(data.snipeID));
-    const [game, player, snipe] = await Promise.all(gamePromise, playerPromise, snipePromise);
+    const [game, player, snipe] = await Promise.all([gamePromise, playerPromise, snipePromise]);
     checkPreconditions(game, player, snipe);
 
     let sendVoteMessages = false;
@@ -107,7 +107,7 @@ async function handleSuccessfulSnipe(transaction, game, snipe) {
   const targetUserPromise = transaction.get(targetUserRef);
   const targetPlayerPromise = transaction.get(targetPlayerRef);
   const snipePicturePromise = transaction.get(snipePictureRef);
-  const [targetUser, targetPlayer, snipePicture] = await Promise.all(targetUserPromise, targetPlayerPromise, snipePicturePromise);
+  const [targetUser, targetPlayer, snipePicture] = await Promise.all([targetUserPromise, targetPlayerPromise, snipePicturePromise]);
 
   if (snipePicture.get("refCount") === 1) {
     transaction.delete(snipePictureRef);
@@ -138,7 +138,7 @@ async function handleGameEnded(transaction, game) {
   // Note: winner doesn't have timeOfDeath, so they aren't included in this query result
   const deadPlayersPromise = game.ref.collection("players").orderBy("timeOfDeath", "desc").get(); //TODO: not sure if this will work. Make sure values in db have actual timestamp type
   const winnersPromise = game.ref.collection("players").where('alive', '==', true).get();
-  const [deadPlayers, winners] = await Promise.all(deadPlayersPromise, winnersPromise);
+  const [deadPlayers, winners] = await Promise.all([deadPlayersPromise, winnersPromise]);
   if (winners.docs.length !== 1) {
     console.error("Game ended with more than 1 player alive");
   }
