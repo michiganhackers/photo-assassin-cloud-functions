@@ -26,7 +26,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     const [game, player, snipe] = await Promise.all(gamePromise, playerPromise, snipePromise);
     checkPreconditions(game, player, snipe);
 
-    let sendVoteMessages = { send: false };
+    let sendVoteMessages = false;
     // target gets chance to vote before everyone else
     if (snipe.get("target") === player.get("playerID")) {
       sendVoteMessages = !data.vote;
@@ -40,7 +40,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     return sendVoteMessages;
   });
 
-  if (sendVoteMessages.send) {
+  if (sendVoteMessages) {
     await sendVoteMessagesToAlivePlayers(game.ref, snipe.getData());
   }
 
@@ -66,10 +66,10 @@ async function sendVoteMessagesToAlivePlayers(gameRef, snipeData) {
     .map(playerRef =>
       playerRef.update({ pendingVotes: admin.firestore.FieldValue.arrayUnion(data.snipeID) })
     );
-
+  await Promise.all(updatePendingVotes);
   const { payload, options } = createSnipeVoteMessage(snipeData);
   const messages = alivePlayers.map(playerRef => sendMessageToUser(playerRef.id, payload, options));
-  return Promise.all(...messages, ...updatePendingVotes);
+  return Promise.all(messages);
 }
 
 function handleTargetVote(transaction, vote, game, snipe) {
