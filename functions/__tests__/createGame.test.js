@@ -2,7 +2,7 @@
 const admin = require("firebase-admin");
 const test_func = require("firebase-functions-test")();
 const functions = require("../index");
-const testUtils = require("./utilities");
+const testUtils = require("./testUtilities");
 const {isValidUniqueString} = require("../utilities");
 const constants = require("../constants");
 

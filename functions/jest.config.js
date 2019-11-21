@@ -1,6 +1,6 @@
 module.exports = {
     testEnvironment: 'node',
     testPathIgnorePatterns: [
-        "<rootDir>/__tests__/utilities.js"
+        "<rootDir>/__tests__/testUtilities.js"
     ]
 }
