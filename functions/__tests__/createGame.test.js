@@ -49,6 +49,6 @@ test("game created w/ single user has valid default values", async () => {
     expect(players[0].id).toBe(uid);
 
     const player = await players[0].get();
-    const playerExpected = {isOwner: true};
+    const playerExpected = {isOwner: true, uid: uid};
     expect(player.data()).toEqual(playerExpected);
 });

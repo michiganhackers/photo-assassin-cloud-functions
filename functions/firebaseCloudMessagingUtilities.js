@@ -8,7 +8,8 @@ const usersRef = firestore.collection("users");
 
 const messageType = {
     snipeVote: "snipeVote",
-    gameStarted: "gameStarted"
+    gameStarted: "gameStarted",
+    gameInvite: "gameInvite"
 };
 
 
@@ -32,7 +33,7 @@ exports.sendMessageToUser = async (uid, payload, options) => {
             }
         }
     });
-    return user.ref.update({ firebaseInstanceIds: admin.firestore.FieldValue.arrayRemove(tokensToRemove) });
+    await user.ref.update({ firebaseInstanceIds: admin.firestore.FieldValue.arrayRemove(tokensToRemove) });
 }
 
 // snipeData = data from snipe document
@@ -68,6 +69,25 @@ exports.createGameStartedMessage = gameData => {
             gameID: gameData.gameID,
             gameName: gameData.name,
             messageType: messageType.gameStarted
+        }
+    }
+    const options = undefined;
+
+    return { payload: payload, options: options };
+}
+
+// gameData = {name: string, gameID: string}
+// Returns {payload: messaging.MessagingPayload, options?: messaging.MessagingOptions}
+exports.createGameInviteMessage = gameData => {
+    const payload = {
+        notification: {
+            title: `You have been invited to game ${gameData.name}!`,
+            body: ""
+        },
+        data: {
+            gameID: gameData.gameID,
+            gameName: gameData.name,
+            messageType: messageType.gameInvite
         }
     }
     const options = undefined;
