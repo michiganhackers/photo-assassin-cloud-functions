@@ -22,7 +22,6 @@ exports.sendMessageToUser = async (uid, payload, options) => {
     const user = await usersRef.doc(uid).get();
     const tokens = user.get("firebaseInstanceIds");
     if(typeof tokens === "undefined" || tokens.length === 0){
-        console.log(`User with uid ${uid} has no tokens`);
         return
     }
 
