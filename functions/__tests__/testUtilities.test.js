@@ -45,6 +45,7 @@ describe("clearFirestoreData", () => {
         const allDocRefs = [...docRefs, ...subDocRefs];
         const docsBefore = await Promise.all(allDocRefs.map(ref => ref.get()));
         docsBefore.forEach(doc => expect(doc.exists).toBe(true));
+        const addUserWrapped = testFunc.wrap(functions.addUser);
 
         await testUtils.clearFirestoreData();
         const docsAfter = await Promise.all(allDocRefs.map(ref => ref.get()));
@@ -84,5 +85,20 @@ describe("addUsers", () => {
         const userDocPromises = userDocRefs.map(ref => ref.get());
         const userDocs = await Promise.all(userDocPromises);
         userDocs.forEach(doc => expect(doc.exists).toBe(true));
+    });
+});
+
+describe("createGame", () => {
+    const addUserWrapped = testFunc.wrap(functions.addUser);
+    const createGameWrapped = testFunc.wrap(functions.createGame);
+    const gamesRef = firestore.collection("games");
+
+    test("createGame() creates a game document", async () => {
+        expect.assertions(1);
+
+        const [ownerUID, ...invitedUIDs] = await testUtils.addUsers(3, addUserWrapped);
+        const gameID = await testUtils.createGame(ownerUID, invitedUIDs, 5, createGameWrapped);
+        const game = await gamesRef.doc(gameID).get();
+        expect(game.exists).toBe(true);
     });
 });

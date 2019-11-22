@@ -79,3 +79,44 @@ test("game started w/ 4 players has valid default values", async () => {
         expect(currentGames).toContain(gameID);
     });
 });
+
+test("error thrown if same game started 2x", async () => {
+    expect.assertions(1);
+
+    const userIDs = await testUtils.addUsers(4, addUserWrapped);
+    const [ownerUID, ...invitedUIDs] = userIDs;
+    const gameID = await testUtils.createGame(ownerUID, invitedUIDs, 5, createGameWrapped);
+
+    const startGameData = { gameID: gameID };
+    const context = { auth: { uid: ownerUID } };
+    await startGameWrapped(startGameData, context);
+
+    let errorThrown = false;
+    try {
+        await startGameWrapped(startGameData, context);
+    } catch (e) {
+        errorThrown = true;
+    }
+    expect(errorThrown).toBe(true);
+});
+
+test("error thrown if non-owner tries to start game", async () => {
+    expect.assertions(1);
+
+    const userIDs = await testUtils.addUsers(4, addUserWrapped);
+    const [ownerUID, ...invitedUIDs] = userIDs;
+    const gameID = await testUtils.createGame(ownerUID, invitedUIDs, 5, createGameWrapped);
+
+    const startGameData = { gameID: gameID };
+    const context0 = { auth: { uid: ownerUID } };
+    await startGameWrapped(startGameData, context0);
+
+    let errorThrown = false;
+    try {
+        const context1 = { auth: { uid: invitedUIDs[0] } };
+        await startGameWrapped(startGameData, context1);
+    } catch (e) {
+        errorThrown = true;
+    }
+    expect(errorThrown).toBe(true);
+});
