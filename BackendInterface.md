@@ -14,8 +14,13 @@ authenticated for this to occur.
 **Parameters**:
 
  - `displayName` - `String` - The user's display name.
+ - `username` - `String` - The user's username. Must be unique (case insensitive). Automatically converts all characters to lowercase.
 
-**Implementation Status**: This function is fully implemented, but not tested.
+**Returns**:
+
+ - `errorCode` - `String` - `"ok"` if user is successfully created. `"duplicateUsername"` if username already exists.
+
+**Implementation Status**: This function is fully implemented.
 
 ### createGame
 **Description**: Used to create a new game. The game will be in the `notStarted`
@@ -31,6 +36,10 @@ state after creation.
  - `invitedUsernames` - `[String]` - An array containing unique usernames for
     users who should be invited to the game initially. The array should not
     contain the username of the user who created the game.
+
+**Returns**:
+
+ - `gameID` - `String` - The id of the game created.
 
 **Implementation Status**: This function is partially implemented. Games can be
 created, but the `invitedUsernames` parameter is ignored since usernames are

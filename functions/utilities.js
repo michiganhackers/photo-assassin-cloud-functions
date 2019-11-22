@@ -53,6 +53,16 @@ exports.isValidDisplayName = (displayName) => {
     displayName.length <= maxDisplayNameLength;
 }
 
+const minUsernameLength = 5;
+const maxUsernameLength = 20;
+exports.isValidUsername = (username) => {
+  // Only alphanumeric characters are allowed in username
+  return typeof username === "string" &&
+    !(/[^0-9a-zA-Z]/).test(username) &&
+    username.length >= minUsernameLength &&
+    username.length <= maxUsernameLength;
+}
+
 
 exports.getReadableImageUrl = (bucket, remoteFilePath) => {
   // getSignedUrl returns the same url given the same input with

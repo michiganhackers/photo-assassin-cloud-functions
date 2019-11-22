@@ -10,3 +10,7 @@ exports.snipeStatus = {
   success: "success",
   failure: "failure"
 };
+exports.errorCode = {
+  ok: "ok",
+  duplicateUsername: "duplicateUsername"
+};

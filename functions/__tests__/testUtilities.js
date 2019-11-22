@@ -3,7 +3,7 @@ const testFirebase = require("@firebase/testing");
 
 // deletes all the data in firestore
 exports.clearFirestoreData = () => {
-    return testFirebase.clearFirestoreData({projectId: "photo-assassin"});
+    return testFirebase.clearFirestoreData({ projectId: "photo-assassin" });
 }
 
 // calls addUserFunc numUsers times and returns the uids
@@ -11,7 +11,10 @@ exports.clearFirestoreData = () => {
 exports.addUsers = (numUsers, addUserFunc) => {
     const addUserPromises = []
     for (let userNum = 0; userNum < numUsers; ++userNum) {
-        const data = { displayName: `testUser${userNum}` };
+        const data = {
+            displayName: `testDisplayName${userNum}`,
+            username: `testUsername${userNum}`
+        };
         const context = { auth: { uid: `testUserID${userNum}` } };
         addUserPromises.push(addUserFunc(data, context));
     }
