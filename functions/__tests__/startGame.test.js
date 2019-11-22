@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 test("game started w/ 4 players has valid default values", async () => {
-    expect.assertions(35);
+    expect.assertions(43);
 
     const userIDs = await testUtils.addUsers(4, addUserWrapped);
     const [ownerUID, ...invitedUIDs] = userIDs;
@@ -69,5 +69,13 @@ test("game started w/ 4 players has valid default values", async () => {
         const sniper = players.filter(p => p.get("uid") === player.get("sniper"))[0];
         expect(target.get("sniper")).toBe(player.get("uid"));
         expect(sniper.get("target")).toBe(player.get("uid"));
+    });
+
+    const playerUserPromises = await userIDs.map(uid => usersRef.doc(uid).get());
+    const playerUsers = await Promise.all(playerUserPromises);
+    playerUsers.forEach(user => {
+        const currentGames = user.get("currentGames");
+        expect(currentGames.length).toBe(1);
+        expect(currentGames).toContain(gameID);
     });
 });
