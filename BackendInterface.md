@@ -150,7 +150,7 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Parameters**: `displayName` - `String` - The new display name.
 
-**Implementation Status**: This function is partially implemented. It does not prevent duplicate display names from being created.
+**Implementation Status**: This function is partially implemented.
 
 ### updateFirebaseInstanceIds
 **Description**: Used to update the `firebaseInstanceIds` field of the currently logged in user. Note that it is allowed for a user to be logged in on multiple devices and/or use the same device to log into multiple accounts.
