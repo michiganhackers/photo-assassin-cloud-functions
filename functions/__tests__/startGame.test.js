@@ -120,3 +120,22 @@ test("error thrown if non-owner tries to start game", async () => {
     }
     expect(errorThrown).toBe(true);
 });
+
+test("make sure starting multiple games show up in currentGames", async () => {
+    expect.assertions(12);
+
+    const userIDs = await testUtils.addUsers(4, addUserWrapped);
+    const [ownerUID, ...invitedUIDs] = userIDs;
+    const createGamePromises = [1, 2, 3].map(_ => testUtils.createGame(ownerUID, invitedUIDs, 5, createGameWrapped));
+    const gameIDs = await Promise.all(createGamePromises);
+
+    const context = { auth: { uid: ownerUID } };
+    await Promise.all(gameIDs.map(id => startGameWrapped({ gameID: id }, context)))
+
+    const users = await Promise.all(userIDs.map(id => usersRef.doc(id).get()));
+    users.forEach(user => {
+        gameIDs.forEach(gameID => {
+            expect(user.get("currentGames")).toContain(gameID);
+        });
+    });
+});

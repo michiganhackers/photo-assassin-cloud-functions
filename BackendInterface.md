@@ -59,8 +59,7 @@ designated as the owner (i.e. creator) of the game to start.
      - Have a status of `notStarted`.
      - Have at least 3 players in the lobby.
 
-**Implementation Status**: Fully implemented (in theory). Note that this
-function is *not* fully tested.
+**Implementation Status**: Fully implemented.
 
 ### submitSnipe
 **Description**: Used to submit a snipe (i.e. picture of target(s)) to one or
