@@ -38,7 +38,7 @@ exports.sendMessageToUser = async (uid, payload, options) => {
         }
     });
     await user.ref.update({ firebaseInstanceIds: admin.firestore.FieldValue.arrayRemove(tokensToRemove) });
-}
+};
 
 // snipeData = data from snipe document
 // Returns {payload: messaging.MessagingPayload, options?: messaging.MessagingOptions}
@@ -59,7 +59,7 @@ exports.createSnipeVoteMessage = snipeData => {
     const options = undefined;
 
     return { payload: payload, options: options };
-}
+};
 
 // gameData = {name: string, gameID: string}
 // Returns {payload: messaging.MessagingPayload, options?: messaging.MessagingOptions}
@@ -78,7 +78,7 @@ exports.createGameStartedMessage = gameData => {
     const options = undefined;
 
     return { payload: payload, options: options };
-}
+};
 
 // gameData = {name: string, gameID: string}
 // Returns {payload: messaging.MessagingPayload, options?: messaging.MessagingOptions}
@@ -97,4 +97,4 @@ exports.createGameInviteMessage = gameData => {
     const options = undefined;
 
     return { payload: payload, options: options };
-}
+};

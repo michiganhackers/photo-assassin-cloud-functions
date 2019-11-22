@@ -51,7 +51,7 @@ exports.isValidDisplayName = (displayName) => {
     re.test(displayName) &&
     displayName.length >= minDisplayNameLength &&
     displayName.length <= maxDisplayNameLength;
-}
+};
 
 const minUsernameLength = 5;
 const maxUsernameLength = 20;
@@ -61,7 +61,7 @@ exports.isValidUsername = (username) => {
     !(/[^0-9a-zA-Z]/).test(username) &&
     username.length >= minUsernameLength &&
     username.length <= maxUsernameLength;
-}
+};
 
 
 exports.getReadableImageUrl = (bucket, remoteFilePath) => {
@@ -80,5 +80,5 @@ exports.getReadableImageUrl = (bucket, remoteFilePath) => {
     throw e;
   })
   return signedUrl;
-}
+};
 
