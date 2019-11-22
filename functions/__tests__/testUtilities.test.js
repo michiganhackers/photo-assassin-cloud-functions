@@ -74,17 +74,12 @@ describe("addUsers", () => {
     const usersRef = firestore.collection("users");
     const addUserWrapped = testFunc.wrap(functions.addUser);
 
-    test("addUsers(3, addUser) returns 3 uids", async () => {
-        expect.assertions(1);
+    test("addUsers(3, addUser) creates 3 user documents", async () => {
+        expect.assertions(4);
 
         const uids = await testUtils.addUsers(3, addUserWrapped);
         expect(uids.length).toBe(3);
-    });
 
-    test("addUsers(3, addUser) creates 3 user documents", async () => {
-        expect.assertions(3);
-
-        await testUtils.addUsers(3, addUserWrapped);
         const userDocRefs = await usersRef.listDocuments();
         const userDocPromises = userDocRefs.map(ref => ref.get());
         const userDocs = await Promise.all(userDocPromises);
