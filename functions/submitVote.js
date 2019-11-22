@@ -69,7 +69,7 @@ async function sendVoteMessagesToAlivePlayers(gameRef, snipeData) {
   await Promise.all(updatePendingVotes);
   const { payload, options } = createSnipeVoteMessage(snipeData);
   const messages = alivePlayers.map(playerRef => sendMessageToUser(playerRef.id, payload, options));
-  return Promise.all(messages);
+  await Promise.all(messages);
 }
 
 function handleTargetVote(transaction, vote, game, snipe) {
