@@ -54,7 +54,7 @@ module.exports = functions.https.onCall(async (data, context) => {
         kills: 0,
         longestLifeSeconds: 0
       });
-      t.create(usernamesRef.doc(usernameLower), { username: usernameLower })
+      t.create(usernamesRef.doc(usernameLower), { username: usernameLower, uid: uid });
 
       return false;
     });
