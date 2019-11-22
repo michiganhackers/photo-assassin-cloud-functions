@@ -77,7 +77,8 @@ module.exports = functions.https.onCall(async (data, context) => {
   });
 
   const { payload, options } = createGameStartedMessage(gameData);
-  playerUIDs.forEach(playerUID => sendMessageToUser(playerUID, payload, options));
+  const sendMessagePromises = playerUIDs.map(playerUID => sendMessageToUser(playerUID, payload, options));
+  await Promise.all(sendMessagePromises);
 
   return {
     gameID: gameID
