@@ -78,9 +78,7 @@ within the designated game(s).
     URI would.
 
 **Implementation Status**: Implemented naively. Does not yet account for images
-that are too big or invalid. Does not handle invalid gameIDs well. *Not tested
-at all*.
-
+that are too big or invalid.
 **Returns**:
 
  - `pictureID` - `String` - The pictureID of the snipe submitted.

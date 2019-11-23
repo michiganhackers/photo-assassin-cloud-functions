@@ -1,5 +1,6 @@
 // Imports
 const fs = require('fs');
+const constants = require("./constants");
 
 // Exports
 
@@ -88,8 +89,8 @@ exports.getReadableImageUrl = (bucket, remoteFilePath) => {
 
 // encodes file data to base64 encoded string
 exports.base64Encode = (filename) => {
-    const buffer = fs.readFileSync(filename);
-    return buffer.toString('base64');
+  const buffer = fs.readFileSync(filename);
+  return buffer.toString('base64');
 };
 
 // useful when you want Promise.all() to fulfill when all promises
@@ -97,11 +98,11 @@ exports.base64Encode = (filename) => {
 // e.g.
 // var arr = [ fetch('index.html'), fetch('http://does-not-exist') ]
 // Promise.all(arr.map(reflect)).then(function(results){
-//     var success = results.filter(x => x.status === "fulfilled");
+//     var success = results.filter(x => x.status === constants.promiseStatus.fulfilled);
 // });
 exports.reflect = (promise) => {
   return promise.then(
-    v => ({ v, status: "fulfilled" }),
-    e => ({ e, status: "rejected" }));
+    value => ({ value, status: constants.promiseStatus.fulfilled }),
+    error => ({ error, status: constants.promiseStatus.rejected }));
 }
 

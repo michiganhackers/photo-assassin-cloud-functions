@@ -5,7 +5,7 @@ const path = require("path");
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const constants = require("./constants");
-const { generateUniqueString, isValidUniqueString } = require("./utilities");
+const { generateUniqueString, isValidUniqueString, reflect } = require("./utilities");
 const { sendMessageToUser, createSnipeVoteMessage } = require("./firebaseCloudMessagingUtilities");
 const { getReadableImageUrl } = require("./utilities");
 
@@ -39,6 +39,14 @@ module.exports = functions.https.onCall(async (data, context) => {
       "Invalid (zero-length) list of gameIDs provided to submitSnipe"
     );
   }
+  gameIDs.forEach(gameID => {
+    if (!isValidUniqueString(gameID)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Invalid gameID " + gameID + " provided to submitSnipe"
+      );
+    }
+  });
 
   // Create and upload the JPEG picture (provided as a base64 string in
   //  data.base64JPEG).
@@ -61,15 +69,9 @@ module.exports = functions.https.onCall(async (data, context) => {
   await snipePicturesRef.doc(pictureID).create({ refCount: 0, pictureID: pictureID });
 
   // Add the snipes to each game.
-  const snipes = await Promise.all(gameIDs.map(async (gameID) => {
+  const snipesResults = await Promise.all(gameIDs.map(async (gameID) => {
     return firestore.runTransaction(async t => {
       // First, ensure that the gameID and UID are valid in this context.
-      if (!isValidUniqueString(gameID)) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "Invalid gameID " + gameID + " provided to submitSnipe"
-        );
-      }
       const gameRef = gamesRef.doc(gameID);
       const game = await t.get(gameRef);
       if (!game.exists) {
@@ -114,7 +116,8 @@ module.exports = functions.https.onCall(async (data, context) => {
       t.update(snipePicturesRef.doc(pictureID), { refCount: snipePicture.get("refCount") + 1, pictureID: pictureID });
       return snipeData;
     });
-  }));
+  }).map(reflect));
+  const snipes = snipesResults.filter(v => v.status === constants.promiseStatus.fulfilled).map(v => v.value);
 
   // Send vote notification to target(s)
   // Note: snipe picture could contain multiple targets for different games

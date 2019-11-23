@@ -14,3 +14,7 @@ exports.errorCode = {
   ok: "ok",
   duplicateUsername: "duplicateUsername"
 };
+exports.promiseStatus = {
+  fulfilled: "fulfilled",
+  rejected: "rejected"
+};
