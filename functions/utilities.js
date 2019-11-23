@@ -1,3 +1,6 @@
+// Imports
+const fs = require('fs');
+
 // Exports
 
 // Implementation of Fisher-Yates shuffle, based on
@@ -80,5 +83,12 @@ exports.getReadableImageUrl = (bucket, remoteFilePath) => {
     throw e;
   })
   return signedUrl;
+};
+
+
+// encodes file data to base64 encoded string
+exports.base64Encode = (filename) => {
+    const buffer = fs.readFileSync(filename);
+    return buffer.toString('base64');
 };
 

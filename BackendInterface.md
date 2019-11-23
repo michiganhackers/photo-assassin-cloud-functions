@@ -81,6 +81,10 @@ within the designated game(s).
 that are too big or invalid. Does not handle invalid gameIDs well. *Not tested
 at all*.
 
+**Returns**:
+
+ - `pictureID` - `String` - The pictureID of the snipe submitted.
+
 ### leaveGame
 **Description**: Used to leave a game that the user no longer wishes to
 participate in. If the game is active and is left with fewer than 3 players, the

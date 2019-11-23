@@ -84,16 +84,18 @@ module.exports = functions.https.onCall(async (data, context) => {
           "Game with gameID " + gameID + " is not in progress"
         );
       }
-      const userInGame = await t.get(gameRef.collection("players").doc(uid));
-      if (!userInGame.exists || !userInGame.alive) {
+      const playersRef = gamesRef.doc(gameID).collection("players");
+      const sniper = await t.get(playersRef.doc(uid));
+      if (!sniper.exists || !sniper.get("alive")) {
         throw new functions.https.HttpsError(
           "failed-precondition",
           "User with UID " + uid + " is not alive in game with gameID " + gameID
         );
       }
-      const targetUID = userInGame.get("target");
-      const snipeID = generateUniqueString();
+      const snipePicture = await t.get(snipePicturesRef.doc(pictureID));
       // Next, create a snipe in the "snipes" collection.
+      const targetUID = sniper.get("target");
+      const snipeID = generateUniqueString();
       const snipeData = {
         pictureID: pictureID,
         sniper: uid,
@@ -103,14 +105,13 @@ module.exports = functions.https.onCall(async (data, context) => {
         votesAgainst: 0,
         votesFor: 0,
         snipePicUrl: snipePicUrl,
-        targetProfilePicUrl: userInGame.get("profilePicUrl"),
         snipeID: snipeID
       };
       t.create(gameRef.collection("snipes").doc(snipeID), snipeData);
 
       // Add pending vote to target and increment snipePicture refCount
-      t.update(userInGame.ref, { pendingVotes: admin.firestore.FieldValue.arrayUnion(snipeID) });
-      t.update(snipePicturesRef.doc(pictureID), { refCount: admin.firestore.FieldValue.increment, pictureID: pictureID });
+      t.update(playersRef.doc(targetUID), { pendingVotes: admin.firestore.FieldValue.arrayUnion(snipeID) });
+      t.update(snipePicturesRef.doc(pictureID), { refCount: snipePicture.get("refCount") + 1, pictureID: pictureID });
       return snipeData;
     });
   }));
