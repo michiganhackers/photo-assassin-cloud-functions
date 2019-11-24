@@ -1,5 +1,6 @@
 // Imports
 const admin = require("firebase-admin");
+const {Bucket} = require("@google-cloud/storage");
 const testFunc = require("firebase-functions-test")();
 const functions = require("../index");
 const testUtils = require("./testUtilities");
@@ -16,15 +17,13 @@ const createGameWrapped = testFunc.wrap(functions.createGame);
 const addUserWrapped = testFunc.wrap(functions.addUser);
 const submitSnipeWrapped = testFunc.wrap(functions.submitSnipe);
 
-jest.setTimeout(30000)
-
 afterEach(() => {
     testFunc.cleanup();
     return testUtils.clearFirestoreData();
 });
 
 test("submitting snipe to one game has valid default values", async () => {
-    expect.assertions(16);
+    expect.assertions(17);
 
     const userIDs = await testUtils.addUsers(4, addUserWrapped);
     const [ownerUID, ...invitedUIDs] = userIDs;
@@ -37,7 +36,10 @@ test("submitting snipe to one game has valid default values", async () => {
     const img = base64Encode("./__tests__/stock_img.jpg");
     const timeBeforeSnipe = new Date();
     const data = { gameIDs: [gameID], base64JPEG: img };
+    const mockUpload = jest.fn().mockResolvedValueOnce(null);
+    Bucket.prototype.upload = mockUpload;
     const { pictureID } = await submitSnipeWrapped(data, context);
+    expect(mockUpload).toBeCalled();
     expect(isValidUniqueString(pictureID)).toBe(true);
 
     const snipesRef = gamesRef.doc(gameID).collection("snipes");
@@ -72,7 +74,7 @@ test("submitting snipe to one game has valid default values", async () => {
 });
 
 test("submitting snipe to 3 games has valid default values", async () => {
-    expect.assertions(40);
+    expect.assertions(41);
 
     const userIDs = await testUtils.addUsers(4, addUserWrapped);
     const [ownerUID, ...invitedUIDs] = userIDs;
@@ -86,7 +88,10 @@ test("submitting snipe to 3 games has valid default values", async () => {
     const img = base64Encode("./__tests__/stock_img.jpg");
     const timeBeforeSnipe = new Date();
     const data = { gameIDs: gameIDs, base64JPEG: img };
+    const mockUpload = jest.fn().mockResolvedValueOnce(null);
+    Bucket.prototype.upload = mockUpload;
     const { pictureID } = await submitSnipeWrapped(data, context);
+    expect(mockUpload).toBeCalled();
     expect(isValidUniqueString(pictureID)).toBe(true);
 
     const checkSnipePromises = gameIDs.map(async gameID => {
