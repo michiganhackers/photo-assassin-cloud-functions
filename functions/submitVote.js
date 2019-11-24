@@ -3,9 +3,11 @@ const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const { sendMessageToUser, createSnipeVoteMessage } = require("./firebaseCloudMessagingUtilities");
 const constants = require("./constants");
+const { getSnipePicRemoteFilePath, isValidUniqueString } = require("./utilities");
 
 // Globals
 const firestore = admin.firestore();
+const bucket = admin.storage().bucket();
 const gamesRef = firestore.collection("games");
 const usersRef = firestore.collection("users");
 const snipePicturesRef = firestore.collection("snipePictures");
@@ -18,39 +20,34 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
   validateArguments(data);
+  const gameRef = gamesRef.doc(data.gameID);
+  const playersRef = gameRef.collection("players");
+  const snipesRef = gameRef.collection("snipes");
   const sendVoteMessages = await firestore.runTransaction(async t => {
-    const gameRef = gamesRef.doc(data.gameID);
     const gamePromise = t.get(gameRef);
-    const playerPromise = t.get(gameRef.collection("players").doc(uid));
-    const snipePromise = t.get(gameRef.collection("snipes").doc(data.snipeID));
+    const playerPromise = t.get(playersRef.doc(context.auth.uid));
+    const snipePromise = t.get(snipesRef.doc(data.snipeID));
     const [game, player, snipe] = await Promise.all([gamePromise, playerPromise, snipePromise]);
     checkPreconditions(game, player, snipe);
 
     let sendVoteMessages = false;
     // target gets chance to vote before everyone else
-    if (snipe.get("target") === player.get("playerID")) {
+    if (snipe.get("target") === player.get("uid")) {
       sendVoteMessages = !data.vote;
-      handleTargetVote(t, data.vote, game, snipe);
+      await handleTargetVote(t, data.vote, game, snipe);
     }
     // If user isn't target, majority (of alive players) required to settle vote
     else {
-      handleNonTargetVote(t, data.vote, game, snipe);
+      await handleNonTargetVote(t, data.vote, game, snipe);
     }
     t.update(player.ref, { pendingVotes: admin.firestore.FieldValue.arrayRemove(data.snipeID) });
     return sendVoteMessages;
   });
 
   if (sendVoteMessages) {
-    await sendVoteMessagesToAlivePlayers(game.ref, snipe.getData());
+    const snipe = await snipesRef.doc(data.snipeID).get();
+    await sendVoteMessagesToAlivePlayers(gameRef, snipe.data());
   }
-
-  await firestore.runTransaction(async t => {
-    const gameRef = gamesRef.doc(gameID);
-    const game = t.get(gameRef);
-    if (game.get("numberAlive") === 1) {
-      handleGameEnded(t, game);
-    }
-  });
 
   return true;
 });
@@ -62,37 +59,37 @@ module.exports = functions.https.onCall(async (data, context) => {
 // modify application state
 async function sendVoteMessagesToAlivePlayers(gameRef, snipeData) {
   const alivePlayers = await gameRef.collection("players").where('alive', '==', true).get();
-  const updatePendingVotes = alivePlayers.filter(playerRef => playerRef !== snipeData.sniper)
-    .map(playerRef =>
-      playerRef.update({ pendingVotes: admin.firestore.FieldValue.arrayUnion(data.snipeID) })
-    );
+  const receivers = alivePlayers.docs.filter(player => player.get("uid") !== snipeData.sniper && player.get("uid") !== snipeData.target);
+  const updatePendingVotes = receivers.map(player =>
+    player.ref.update({ pendingVotes: admin.firestore.FieldValue.arrayUnion(snipeData.snipeID) })
+  );
   await Promise.all(updatePendingVotes);
   const { payload, options } = createSnipeVoteMessage(snipeData);
-  const messages = alivePlayers.map(playerRef => sendMessageToUser(playerRef.id, payload, options));
+  const messages = receivers.map(player => sendMessageToUser(player.get("uid"), payload, options));
   await Promise.all(messages);
 }
 
-function handleTargetVote(transaction, vote, game, snipe) {
+async function handleTargetVote(transaction, vote, game, snipe) {
   if (vote) {
     // assumes no writes have happened before this point in the transaction
-    handleSuccessfulSnipe(transaction, game, snipe);
+    await handleSuccessfulSnipe(transaction, game, snipe);
   }
 }
-function handleNonTargetVote(transaction, vote, game, snipe) {
+async function handleNonTargetVote(transaction, vote, game, snipe) {
   if (vote) {
-    // >= and not > because don't include sniper
-    if (snipe.get("votesFor") + 1 >= game.get("numberAlive") / 2) {
+    // - 1 because don't include target or sniper but include current vote
+    if (snipe.get("votesFor") - 1 > game.get("numberAlive") / 2) {
       // assumes no writes have happened before this point in the transaction
-      handleSuccessfulSnipe(transaction, game, snipe);
+      await handleSuccessfulSnipe(transaction, game, snipe);
     }
-    transaction.update(snipe.ref, { votesFor: admin.firestore.FieldValue.increment });
+    transaction.update(snipe.ref, { votesFor: snipe.get("votesFor") + 1 });
   }
   else {
-    // >= and not > because don't include sniper
-    if (snipe.get("votesAgainst") + 1 >= game.get("numberAlive") / 2) {
+    // - 1 because don't include target or sniper but include current vote
+    if (snipe.get("votesAgainst") - 1 > game.get("numberAlive") / 2) {
       handleFailedSnipe(transaction, snipe);
     }
-    transaction.update(snipe.ref, { votesAgainst: admin.firestore.FieldValue.increment });
+    transaction.update(snipe.ref, { votesAgainst: snipe.get("votesAgainst") + 1 });
   }
 }
 
@@ -104,56 +101,62 @@ async function handleSuccessfulSnipe(transaction, game, snipe) {
   const targetPlayerRef = playersRef.doc(snipe.get("target"));
   const sniperPlayerRef = playersRef.doc(snipe.get("sniper"));
   const snipePictureRef = snipePicturesRef.doc(snipe.get("pictureID"));
+
   const targetUserPromise = transaction.get(targetUserRef);
+  const sniperUserPromise = transaction.get(sniperUserRef);
   const targetPlayerPromise = transaction.get(targetPlayerRef);
+  const sniperPlayerPromise = transaction.get(sniperPlayerRef);
   const snipePicturePromise = transaction.get(snipePictureRef);
-  const [targetUser, targetPlayer, snipePicture] = await Promise.all([targetUserPromise, targetPlayerPromise, snipePicturePromise]);
+
+  const [targetUser, sniperUser, targetPlayer, sniperPlayer, snipePicture] = await Promise.all([targetUserPromise, sniperUserPromise, targetPlayerPromise, sniperPlayerPromise, snipePicturePromise]);
 
   if (snipePicture.get("refCount") === 1) {
-    transaction.delete(snipePictureRef);
+    const remotePicFilePath = getSnipePicRemoteFilePath(snipe.get("pictureID"));
+    try {
+      await bucket.deleteFiles({
+        prefix: remotePicFilePath
+      });
+    } catch (e) {
+      console.log(`picture at ${remotePicFilePath} doesn't exist`);
+    }
   }
-  else {
-    transaction.update(snipePictureRef, { refCount: admin.firestore.FieldValue.decrement });
-  }
+  transaction.update(snipePictureRef, { refCount: snipePicture.get("refCount") - 1 });
 
   const targetLifeLength = game.get("startTime") - new Date(); //TODO: probably not correct
   if (targetLifeLength > targetUser.get("longestLifeSeconds")) { //TODO: probably not correct
     transaction.update(targetUserRef, { longestLifeSeconds: targetLifeLength });
   }
-  transaction.update(targetUserRef, { deaths: admin.firestore.FieldValue.increment });
-  transaction.update(sniperUserRef, { kills: admin.firestore.FieldValue.increment });
+  transaction.update(targetUserRef, { deaths: targetUser.get("deaths") + 1 });
+  transaction.update(sniperUserRef, { kills: sniperUser.get("kills") + 1 });
   transaction.update(targetPlayerRef, { alive: false, timeOfDeath: new Date() });
-  transaction.update(sniperPlayerRef, { kills: admin.firestore.FieldValue.increment, target: targetPlayer.get("target") });
-  transaction.update(game.ref, { numberAlive: admin.firestore.FieldValue.decrement });
+  transaction.update(sniperPlayerRef, { kills: sniperPlayer.get("kills") + 1, target: targetPlayer.get("target") });
+  transaction.update(game.ref, { numberAlive: game.get("numberAlive") - 1 });
   transaction.update(snipe.ref, { status: constants.snipeStatus.success });
-  transaction.update(playersRef.doc(targetPlayer.get("target")), { sniper:  snipe.get("sniper")});
+  transaction.update(playersRef.doc(targetPlayer.get("target")), { sniper: snipe.get("sniper") });
 
-  // Note: An ended game is handled in a different transaction for simplicity reasons
-  // This means that a client could see that there is only 1 player left in a game that is
-  // in progress for a short amount of time before it updates to ended
+  if (game.get("numberAlive") - 1 === 1) {
+    // sniperPlayerRef is the winner because we know they are alive at this point
+    await handleGameEnded(transaction, game.ref, sniperPlayerRef);
+  }
 }
 
-async function handleGameEnded(transaction, game) {
-  // assumes no writes have happened before this point in the transaction
+async function handleGameEnded(transaction, gameRef, winnerPlayerRef) {
   // Note: winner doesn't have timeOfDeath, so they aren't included in this query result
-  const deadPlayersPromise = game.ref.collection("players").orderBy("timeOfDeath", "desc").get(); //TODO: not sure if this will work. Make sure values in db have actual timestamp type
-  const winnersPromise = game.ref.collection("players").where('alive', '==', true).get();
-  const [deadPlayers, winners] = await Promise.all([deadPlayersPromise, winnersPromise]);
-  if (winners.docs.length !== 1) {
-    console.error("Game ended with more than 1 player alive");
-  }
-  transaction.update(game.ref, { endTime: new Date(), status: constants.gameStatus.ended });
-  const winner = winners.docs[0];
+  // No need to do this reads with the transaction because none of the fields being read
+  // can change at this points ????? UNLESS IT SOMEHOW DOESN'T HAVE ACCESS TO WRITEs FROM TRANSACTION
+  const deadPlayersPromise = gameRef.collection("players").orderBy("timeOfDeath", "desc").get(); //TODO: not sure if this will work. Make sure values in db have actual timestamp type
+  const deadPlayers = await deadPlayersPromise;
+  transaction.update(gameRef, { endTime: new Date(), status: constants.gameStatus.ended });
   // Note: place is 1-indexed
-  transaction.update(winner.ref, { place: 1 });
+  transaction.update(winnerPlayerRef, { place: 1 });
   deadPlayers.docs.forEach((doc, i) => transaction.update(doc.ref, { place: i + 2 }));
 
-  const playerRefs = await game.ref.collection("players").listDocuments();
+  const playerRefs = await gameRef.collection("players").listDocuments();
   playerRefs.forEach(playerRef => {
-    t.update(usersRef.doc(playerRef.id),
+    transaction.update(usersRef.doc(playerRef.id),
       {
-        currentGames: admin.firestore.FieldValue.arrayRemove(game.ref.id),
-        completedGames: admin.firestore.FieldValue.arrayUnion(game.ref.id)
+        currentGames: admin.firestore.FieldValue.arrayRemove(gameRef.id),
+        completedGames: admin.firestore.FieldValue.arrayUnion(gameRef.id)
       });
   });
 }
@@ -187,7 +190,7 @@ function validateArguments(data) {
 function checkPreconditions(game, player, snipe) {
   const gameID = game.get("gameID");
   const snipeID = snipe.get("snipeID");
-  const uid = player.get("playerID");
+  const uid = player.get("uid");
 
   if (!game.exists) {
     throw new functions.https.HttpsError(
@@ -231,14 +234,14 @@ function checkPreconditions(game, player, snipe) {
     );
   }
 
-  if (!snipe.get("status") !== constants.snipeStatus.voting) {
+  if (snipe.get("status") !== constants.snipeStatus.voting) {
     throw new functions.https.HttpsError(
       "failed-precondition",
       `Snipe with snipeID ${snipeID} does not have status voting in game with gameID ${gameID}`
     );
   }
 
-  if(snipe.get("sniper") === uid){
+  if (snipe.get("sniper") === uid) {
     throw new functions.https.HttpsError(
       "failed-precondition",
       `Sniper with uid ${uid} tried to vote on their own snipe with snipeID ${snipeID}`

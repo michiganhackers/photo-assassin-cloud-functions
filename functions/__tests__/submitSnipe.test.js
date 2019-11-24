@@ -5,7 +5,7 @@ const testFunc = require("firebase-functions-test")();
 const functions = require("../index");
 const testUtils = require("./testUtilities");
 const constants = require("../constants");
-const { base64Encode, isValidUniqueString } = require("../utilities.js");
+const { base64Encode, isValidUniqueString } = require("../utilities");
 
 // Globals
 const firestore = admin.firestore();
@@ -19,6 +19,7 @@ const submitSnipeWrapped = testFunc.wrap(functions.submitSnipe);
 
 afterEach(() => {
     testFunc.cleanup();
+    Bucket.prototype.upload.mockClear()
     return testUtils.clearFirestoreData();
 });
 
