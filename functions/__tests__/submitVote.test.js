@@ -32,9 +32,9 @@ afterEach(() => {
 });
 
 test("targets only vote that snipe was valid & only 1 person snipes", async () => {
-    expect.assertions(49);
-
-    const userIDs = await testUtils.addUsers(3, addUserWrapped);
+    expect.assertions(124);
+    const numPlayers = 6;
+    const userIDs = await testUtils.addUsers(numPlayers, addUserWrapped);
     const [ownerUID, ...invitedUIDs] = userIDs;
     const gameID = await testUtils.createGame(ownerUID, invitedUIDs, 5, createGameWrapped);
     await startGameWrapped({ gameID: gameID }, { auth: { uid: ownerUID } });
@@ -46,7 +46,9 @@ test("targets only vote that snipe was valid & only 1 person snipes", async () =
 
     const snipesRef = gameRef.collection("snipes");
 
-    for (let i = 0; i < 2; ++i) {
+    const playerPlaces = {};
+    playerPlaces[ownerUID] = 1;
+    for (let i = 0; i < numPlayers - 1; ++i) {
         /* eslint-disable no-await-in-loop */
         // owner will snipe everyone in the game until it ends
         const winner = await playersRef.doc(ownerUID).get();
@@ -72,6 +74,7 @@ test("targets only vote that snipe was valid & only 1 person snipes", async () =
         expect(snipe.get("votesFor")).toBe(0);
         expect(snipe.get("votesAgainst")).toBe(0);
         expect(snipe.get("status")).toBe(constants.snipeStatus.success);
+        playerPlaces[winner.get("target")] = numPlayers - i;
 
         targetPlayer = await targetPlayer.ref.get();
         expect(targetPlayer.get("pendingVotes").length).toBe(0);
@@ -95,16 +98,22 @@ test("targets only vote that snipe was valid & only 1 person snipes", async () =
         expect(sniperPlayer.get("target")).toBe(targetPlayer.get("target"));
 
         let game = await gameRef.get();
-        expect(game.get("numberAlive")).toBe(2 - i);
+        expect(game.get("numberAlive")).toBe(numPlayers - i - 1);
 
         let targetTargetPlayer = await playersRef.doc(targetPlayer.get("target")).get();
         expect(targetTargetPlayer.get("sniper")).toBe(winner.get("uid"));
 
-        if (i === 1) {
+        if (i === numPlayers - 2) {
             expect(game.get("status")).toBe(constants.gameStatus.ended);
         }
         /* eslint-enable no-await-in-loop */
     }
+
+    const playerRefs = await playersRef.listDocuments();
+    const players = await Promise.all(playerRefs.map(ref => ref.get()));
+    players.forEach(player => {
+        expect(player.get("place")).toBe(playerPlaces[player.get("uid")]);
+    });
 
     const users = await Promise.all(userIDs.map(id => usersRef.doc(id).get()));
     users.forEach(user => {

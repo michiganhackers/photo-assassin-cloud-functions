@@ -122,13 +122,13 @@ async function handleSuccessfulSnipe(transaction, game, snipe) {
   }
   transaction.update(snipePictureRef, { refCount: snipePicture.get("refCount") - 1 });
 
-  const targetLifeLength = game.get("startTime") - new Date(); //TODO: probably not correct
-  if (targetLifeLength > targetUser.get("longestLifeSeconds")) { //TODO: probably not correct
+  const targetLifeLengthSeconds = (game.get("startTime").toDate() - new Date()) / 1000;
+  if (targetLifeLengthSeconds > targetUser.get("longestLifeSeconds")) {
     transaction.update(targetUserRef, { longestLifeSeconds: targetLifeLength });
   }
   transaction.update(targetUserRef, { deaths: targetUser.get("deaths") + 1 });
   transaction.update(sniperUserRef, { kills: sniperUser.get("kills") + 1 });
-  transaction.update(targetPlayerRef, { alive: false, timeOfDeath: new Date() });
+  transaction.update(targetPlayerRef, { alive: false, timeOfDeath: admin.firestore.FieldValue.serverTimestamp() });
   transaction.update(sniperPlayerRef, { kills: sniperPlayer.get("kills") + 1, target: targetPlayer.get("target") });
   transaction.update(game.ref, { numberAlive: game.get("numberAlive") - 1 });
   transaction.update(snipe.ref, { status: constants.snipeStatus.success });
@@ -136,21 +136,25 @@ async function handleSuccessfulSnipe(transaction, game, snipe) {
 
   if (game.get("numberAlive") - 1 === 1) {
     // sniperPlayerRef is the winner because we know they are alive at this point
-    await handleGameEnded(transaction, game.ref, sniperPlayerRef);
+    await handleGameEnded(transaction, game.ref, sniperPlayerRef, targetPlayerRef);
   }
 }
 
-async function handleGameEnded(transaction, gameRef, winnerPlayerRef) {
+async function handleGameEnded(transaction, gameRef, winnerPlayerRef, targetPlayerRef) {
   // Note: winner doesn't have timeOfDeath, so they aren't included in this query result
   // No need to do this reads with the transaction because none of the fields being read
-  // can change at this points ????? UNLESS IT SOMEHOW DOESN'T HAVE ACCESS TO WRITEs FROM TRANSACTION
-  const deadPlayersPromise = gameRef.collection("players").orderBy("timeOfDeath", "desc").get(); //TODO: not sure if this will work. Make sure values in db have actual timestamp type
+  // can change at this points
+  const deadPlayersPromise = gameRef.collection("players").orderBy("timeOfDeath", "desc").get();
   const deadPlayers = await deadPlayersPromise;
-  transaction.update(gameRef, { endTime: new Date(), status: constants.gameStatus.ended });
   // Note: place is 1-indexed
   transaction.update(winnerPlayerRef, { place: 1 });
-  deadPlayers.docs.forEach((doc, i) => transaction.update(doc.ref, { place: i + 2 }));
+  transaction.update(targetPlayerRef, { place: 2 });
+  for (let i = 0; i < deadPlayers.docs.length; ++i) {
+    const player = deadPlayers.docs[i];
+    transaction.update(player.ref, { place: i + 3 })
+  }
 
+  transaction.update(gameRef, { endTime: admin.firestore.FieldValue.serverTimestamp(), status: constants.gameStatus.ended });
   const playerRefs = await gameRef.collection("players").listDocuments();
   playerRefs.forEach(playerRef => {
     transaction.update(usersRef.doc(playerRef.id),
