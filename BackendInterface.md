@@ -113,7 +113,7 @@ the designated game and has not yet voted on this snipe.
   - `vote` - `Boolean` - The actual vote. Should be `true` if the user thinks
      the picture is a valid snipe of the target, or `false` otherwise.
 
-**Implementation Status**: Implemented, not yet tested.
+**Implementation Status**: Fully implemented.
 
 ### invalidateSnipes
 **Description**: Used to invalidate snipes that were submitted against a user
