@@ -104,5 +104,8 @@ exports.reflect = (promise) => {
   return promise.then(
     value => ({ value, status: constants.promiseStatus.fulfilled }),
     error => ({ error, status: constants.promiseStatus.rejected }));
-}
+};
 
+exports.getSnipePicRemoteFilePath = (pictureID) => {
+  return `images/snipes/${pictureID}.jpg`;
+};

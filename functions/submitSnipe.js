@@ -5,7 +5,7 @@ const path = require("path");
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const constants = require("./constants");
-const { generateUniqueString, isValidUniqueString, reflect } = require("./utilities");
+const { generateUniqueString, isValidUniqueString, reflect, getSnipePicRemoteFilePath } = require("./utilities");
 const { sendMessageToUser, createSnipeVoteMessage } = require("./firebaseCloudMessagingUtilities");
 const { getReadableImageUrl } = require("./utilities");
 
@@ -57,7 +57,7 @@ module.exports = functions.https.onCall(async (data, context) => {
     data.base64JPEG,
     { encoding: "base64" }
   );
-  const remoteFilePath = "images/snipes/" + pictureID + ".jpg"
+  const remoteFilePath = getSnipePicRemoteFilePath(pictureID);
   await bucket.upload(tempFilePath, {
     destination: remoteFilePath
   });

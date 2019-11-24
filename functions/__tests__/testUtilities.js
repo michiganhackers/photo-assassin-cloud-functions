@@ -1,6 +1,6 @@
 // Imports
 const testFirebase = require("@firebase/testing");
-const { generateUniqueString } = require("../utilities.js");
+const { generateUniqueString } = require("../utilities");
 const admin = require("firebase-admin");
 
 // Globals
