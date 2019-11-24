@@ -143,7 +143,7 @@ function createSnipeTransaction(gameID, sniperUID, pictureID, snipePicUrl) {
       sniper: sniperUID,
       status: constants.snipeStatus.voting,
       target: targetUID,
-      time: new Date(),
+      time: admin.firestore.FieldValue.serverTimestamp(),
       votesAgainst: 0,
       votesFor: 0,
       snipePicUrl: snipePicUrl,
