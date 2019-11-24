@@ -22,6 +22,11 @@ afterEach(() => {
     return testUtils.clearFirestoreData();
 });
 
+beforeAll(() => {
+    const mockUpload = jest.fn().mockResolvedValue(null);
+    Bucket.prototype.upload = mockUpload;
+});
+
 test("submitting snipe to one game has valid default values", async () => {
     expect.assertions(17);
 
@@ -36,10 +41,9 @@ test("submitting snipe to one game has valid default values", async () => {
     const img = base64Encode("./__tests__/stock_img.jpg");
     const timeBeforeSnipe = new Date();
     const data = { gameIDs: [gameID], base64JPEG: img };
-    const mockUpload = jest.fn().mockResolvedValueOnce(null);
-    Bucket.prototype.upload = mockUpload;
     const { pictureID } = await submitSnipeWrapped(data, context);
-    expect(mockUpload).toBeCalled();
+    expect(Bucket.prototype.upload).toBeCalled();
+    Bucket.prototype.upload.mockClear()
     expect(isValidUniqueString(pictureID)).toBe(true);
 
     const snipesRef = gamesRef.doc(gameID).collection("snipes");
@@ -88,10 +92,9 @@ test("submitting snipe to 3 games has valid default values", async () => {
     const img = base64Encode("./__tests__/stock_img.jpg");
     const timeBeforeSnipe = new Date();
     const data = { gameIDs: gameIDs, base64JPEG: img };
-    const mockUpload = jest.fn().mockResolvedValueOnce(null);
-    Bucket.prototype.upload = mockUpload;
     const { pictureID } = await submitSnipeWrapped(data, context);
-    expect(mockUpload).toBeCalled();
+    expect(Bucket.prototype.upload).toBeCalled();
+    Bucket.prototype.upload.mockClear()
     expect(isValidUniqueString(pictureID)).toBe(true);
 
     const checkSnipePromises = gameIDs.map(async gameID => {
