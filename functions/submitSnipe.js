@@ -81,6 +81,17 @@ module.exports = functions.https.onCall(async (data, context) => {
     }
   }
 
+  // Delete pic if none of the snipes were fulfilled
+  if (snipes.length === 0) {
+    try {
+      await bucket.deleteFiles({
+        prefix: remoteFilePath
+      });
+    } catch (e) {
+      console.log(`picture at ${remoteFilePath} doesn't exist`);
+    }
+  }
+
   // Send vote notification to target(s)
   // Note: snipe picture could contain multiple targets for different games
   // TODO: Consolidate snipes of same target and apply their vote to all games
@@ -100,6 +111,7 @@ function createSnipeTransaction(gameID, sniperUID, pictureID, snipePicUrl) {
     const gameRef = gamesRef.doc(gameID);
     const game = await t.get(gameRef);
     if (!game.exists) {
+      console.error(`Snipe submitted to game that doesn't exist with gameID ${game.ref.id}`);
       throw new functions.https.HttpsError(
         "failed-precondition",
         "Invalid gameID " + gameID + " provided to submitSnipe"
