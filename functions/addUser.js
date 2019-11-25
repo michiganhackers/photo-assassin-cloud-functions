@@ -35,14 +35,8 @@ module.exports = functions.https.onCall(async (data, context) => {
   let usernameAlreadyExists = true;
   try {
     usernameAlreadyExists = await firestore.runTransaction(async t => {
-      let usernameExists = false;
-      try {
-        const existingUsername = await t.get(usernamesRef.doc(usernameLower));
-        usernameExists = existingUsername.exists;
-      } catch (e) {
-        usernameExists = true;
-      }
-      if (usernameExists) {
+      const existingUsername = await t.get(usernamesRef.doc(usernameLower));
+      if (existingUsername.exists) {
         return true;
       }
 
