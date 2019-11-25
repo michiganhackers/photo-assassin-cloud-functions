@@ -67,6 +67,7 @@ module.exports = functions.https.onCall(async (data, context) => {
 
     t.update(gameRef, {
       numberAlive: playerRefs.length,
+      numPlayers: playerRefs.length,
       startTime: admin.firestore.FieldValue.serverTimestamp(),
       status: constants.gameStatus.started
     });

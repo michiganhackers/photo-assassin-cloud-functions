@@ -18,6 +18,8 @@ const addUserWrapped = testFunc.wrap(functions.addUser);
 const submitSnipeWrapped = testFunc.wrap(functions.submitSnipe);
 const submitVoteWrapped = testFunc.wrap(functions.submitVote);
 
+jest.setTimeout(30000);
+
 beforeAll(() => {
     const mockUpload = jest.fn().mockResolvedValue(null);
     Bucket.prototype.upload = mockUpload;
@@ -122,8 +124,8 @@ test("targets only vote that snipe was valid & only 1 person snipes", async () =
     });
 });
 
-test("unsuccessful snipe", async () => {
-    expect.assertions(76);
+test("half voters vote no leads to unsuccessful snipe", async () => {
+    expect.assertions(62);
     const numPlayers = 5;
     const userIDs = await testUtils.addUsers(numPlayers, addUserWrapped);
     const [ownerUID, ...invitedUIDs] = userIDs;
@@ -165,8 +167,8 @@ test("unsuccessful snipe", async () => {
     expect(targetPlayer.get("pendingVotes").length).toBe(0);
     expect(targetPlayer.get("alive")).toBe(true);
 
-    otherPlayerUIDs = userIDs.filter(uid => uid !== targetPlayer.get("uid") && uid !== sniper.get("uid"));
-    otherPlayers = await Promise.all(otherPlayerUIDs.map(uid => playersRef.doc(uid).get()));
+    const otherPlayerUIDs = userIDs.filter(uid => uid !== targetPlayer.get("uid") && uid !== sniper.get("uid"));
+    const otherPlayers = await Promise.all(otherPlayerUIDs.map(uid => playersRef.doc(uid).get()));
     otherPlayers.forEach(player => {
         expect(player.get("pendingVotes").length).toBe(1);
     });
@@ -193,7 +195,7 @@ test("unsuccessful snipe", async () => {
 
     expect(game.get("status")).toBe(constants.gameStatus.started);
 
-    for (let i = 0; i < otherPlayers.length; ++i) {
+    for (let i = 0; i < otherPlayers.length / 2; ++i) {
         let player = otherPlayers[i];
         /* eslint-disable no-await-in-loop */
         const submitVoteData = { gameID: gameID, snipeID: snipe.get("snipeID"), vote: false };
@@ -202,8 +204,7 @@ test("unsuccessful snipe", async () => {
         snipe = await snipe.ref.get();
         expect(snipe.get("votesFor")).toBe(0);
         expect(snipe.get("votesAgainst")).toBe(i + 1);
-        // - 2 because don't include sniper or target
-        if (i + 1 > numPlayers - 2) {
+        if (i + 1 >= otherPlayers.length / 2) {
             expect(snipe.get("status")).toBe(constants.snipeStatus.failure);
         } else {
             expect(snipe.get("status")).toBe(constants.snipeStatus.voting);
@@ -242,3 +243,123 @@ test("unsuccessful snipe", async () => {
         expect(typeof user.get("completedGames") === "undefined" || !user.get("completedGames").length).toBe(true);
     });
 });
+
+
+test("majority vote yes leads to successful snipe", async () => {
+    expect.assertions(9);
+    const numPlayers = 6;
+    const userIDs = await testUtils.addUsers(numPlayers, addUserWrapped);
+    const [ownerUID, ...invitedUIDs] = userIDs;
+    const gameID = await testUtils.createGame(ownerUID, invitedUIDs, 5, createGameWrapped);
+    await startGameWrapped({ gameID: gameID }, { auth: { uid: ownerUID } });
+    const gameRef = gamesRef.doc(gameID);
+
+    const playersRef = gameRef.collection("players");
+    const img = base64Encode("./__tests__/stock_img.jpg");
+    const submitSnipeData = { gameIDs: [gameID], base64JPEG: img };
+    const sniper = await playersRef.doc(ownerUID).get();
+    const { pictureID } = await submitSnipeWrapped(submitSnipeData, { auth: { uid: sniper.get("uid") } });
+
+    const snipesRef = gameRef.collection("snipes");
+    const snipeRefs = await snipesRef.listDocuments();
+    const snipes = await Promise.all(snipeRefs.map(ref => ref.get()));
+    let snipe = snipes.filter(s => s.get("pictureID") === pictureID)[0];
+
+    const voteNoData = { gameID: gameID, snipeID: snipe.get("snipeID"), vote: false };
+    const voteYesData = { gameID: gameID, snipeID: snipe.get("snipeID"), vote: true };
+    await submitVoteWrapped(voteNoData, { auth: { uid: sniper.get("target") } });
+
+    snipe = await snipe.ref.get();
+    expect(snipe.get("votesFor")).toBe(0);
+    expect(snipe.get("votesAgainst")).toBe(0);
+    expect(snipe.get("status")).toBe(constants.snipeStatus.voting);
+
+    const voterUIDs = userIDs.filter(id => id !== sniper.get("uid") && id !== sniper.get("target"));
+    const numMajority = voterUIDs.length / 2 + 1;
+    const majorityVoters = voterUIDs.filter((_, idx) => idx < numMajority);
+    const minorityVoters = voterUIDs.filter((_, idx) => idx >= numMajority);
+
+    // submit votes sequentially to reduce chance of contention
+    for (uid of minorityVoters) {
+        /* eslint-disable no-await-in-loop */
+        await submitVoteWrapped(voteNoData, { auth: { uid: uid } });
+        /* eslint-enable no-await-in-loop */
+    }
+
+    snipe = await snipe.ref.get();
+    expect(snipe.get("votesFor")).toBe(0);
+    expect(snipe.get("votesAgainst")).toBe(minorityVoters.length);
+    expect(snipe.get("status")).toBe(constants.snipeStatus.voting);
+
+    // submit votes sequentially to reduce chance of contention
+    for (uid of majorityVoters) {
+        /* eslint-disable no-await-in-loop */
+        await submitVoteWrapped(voteYesData, { auth: { uid: uid } });
+        /* eslint-enable no-await-in-loop */
+    }
+
+    snipe = await snipe.ref.get();
+    expect(snipe.get("votesFor")).toBe(majorityVoters.length);
+    expect(snipe.get("votesAgainst")).toBe(minorityVoters.length);
+    expect(snipe.get("status")).toBe(constants.snipeStatus.success);
+});
+
+
+test("half vote no leads to failed snipe", async () => {
+    expect.assertions(9);
+    const numPlayers = 6;
+    const userIDs = await testUtils.addUsers(numPlayers, addUserWrapped);
+    const [ownerUID, ...invitedUIDs] = userIDs;
+    const gameID = await testUtils.createGame(ownerUID, invitedUIDs, 5, createGameWrapped);
+    await startGameWrapped({ gameID: gameID }, { auth: { uid: ownerUID } });
+    const gameRef = gamesRef.doc(gameID);
+
+    const playersRef = gameRef.collection("players");
+    const img = base64Encode("./__tests__/stock_img.jpg");
+    const submitSnipeData = { gameIDs: [gameID], base64JPEG: img };
+    const sniper = await playersRef.doc(ownerUID).get();
+    const { pictureID } = await submitSnipeWrapped(submitSnipeData, { auth: { uid: sniper.get("uid") } });
+
+    const snipesRef = gameRef.collection("snipes");
+    const snipeRefs = await snipesRef.listDocuments();
+    const snipes = await Promise.all(snipeRefs.map(ref => ref.get()));
+    let snipe = snipes.filter(s => s.get("pictureID") === pictureID)[0];
+
+    const voteNoData = { gameID: gameID, snipeID: snipe.get("snipeID"), vote: false };
+    const voteYesData = { gameID: gameID, snipeID: snipe.get("snipeID"), vote: true };
+    await submitVoteWrapped(voteNoData, { auth: { uid: sniper.get("target") } });
+
+    snipe = await snipe.ref.get();
+    expect(snipe.get("votesFor")).toBe(0);
+    expect(snipe.get("votesAgainst")).toBe(0);
+    expect(snipe.get("status")).toBe(constants.snipeStatus.voting);
+
+    const voterUIDs = userIDs.filter(id => id !== sniper.get("uid") && id !== sniper.get("target"));
+    const halfVoters = voterUIDs.filter((_, idx) => idx < voterUIDs.length / 2);
+    const otherHalfVoters = voterUIDs.filter((_, idx) => idx >= voterUIDs.length / 2);
+
+    // submit votes sequentially to reduce chance of contention
+    for (uid of halfVoters) {
+        /* eslint-disable no-await-in-loop */
+        await submitVoteWrapped(voteYesData, { auth: { uid: uid } });
+        /* eslint-enable no-await-in-loop */
+    }
+
+    snipe = await snipe.ref.get();
+    expect(snipe.get("votesFor")).toBe(halfVoters.length);
+    expect(snipe.get("votesAgainst")).toBe(0);
+    expect(snipe.get("status")).toBe(constants.snipeStatus.voting);
+
+    // submit votes sequentially to reduce chance of contention
+    for (uid of otherHalfVoters) {
+        /* eslint-disable no-await-in-loop */
+        await submitVoteWrapped(voteNoData, { auth: { uid: uid } });
+        /* eslint-enable no-await-in-loop */
+    }
+
+    snipe = await snipe.ref.get();
+    expect(snipe.get("votesFor")).toBe(halfVoters.length);
+    expect(snipe.get("votesAgainst")).toBe(halfVoters.length);
+    expect(snipe.get("status")).toBe(constants.snipeStatus.failure);
+});
+

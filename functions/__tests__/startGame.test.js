@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 test("game started w/ 4 players has valid default values", async () => {
-    expect.assertions(43);
+    expect.assertions(44);
 
     const userIDs = await testUtils.addUsers(4, addUserWrapped);
     const [ownerUID, ...invitedUIDs] = userIDs;
@@ -47,7 +47,8 @@ test("game started w/ 4 players has valid default values", async () => {
         name: name,
         status: constants.gameStatus.started,
         gameID: gameID,
-        numberAlive: userIDs.length
+        numberAlive: userIDs.length,
+        numPlayers: userIDs.length
     };
     for (prop in gameExpected) {
         if (Object.prototype.hasOwnProperty.call(gameExpected, prop)) {

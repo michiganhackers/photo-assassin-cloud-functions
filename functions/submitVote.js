@@ -36,7 +36,7 @@ module.exports = functions.https.onCall(async (data, context) => {
       sendVoteMessages = !data.vote;
       await handleTargetVote(t, data.vote, game, snipe);
     }
-    // If user isn't target, majority (of alive players) required to settle vote
+    // If user isn't target, majority required to settle vote (excluding sniper and target)
     else {
       await handleNonTargetVote(t, data.vote, game, snipe);
     }
@@ -46,26 +46,22 @@ module.exports = functions.https.onCall(async (data, context) => {
 
   if (sendVoteMessages) {
     const snipe = await snipesRef.doc(data.snipeID).get();
-    await sendVoteMessagesToAlivePlayers(gameRef, snipe.data());
+    await sendSecondRoundVoteMessages(playersRef, snipe.data());
   }
 
   return true;
 });
 
-// Sends vote message to all alive players EXCLUDING the sniper
-// Players could be dead by the time they receive this message. Filtering is required on the client
-// side to prevent dead players from getting a vote notification.
-// This isn't done in transaction for the reason above as well as because transactions shouldn't
-// modify application state
-async function sendVoteMessagesToAlivePlayers(gameRef, snipeData) {
-  const alivePlayers = await gameRef.collection("players").where('alive', '==', true).get();
-  const receivers = alivePlayers.docs.filter(player => player.get("uid") !== snipeData.sniper && player.get("uid") !== snipeData.target);
-  const updatePendingVotes = receivers.map(player =>
-    player.ref.update({ pendingVotes: admin.firestore.FieldValue.arrayUnion(snipeData.snipeID) })
+// This isn't done in transaction because transactions shouldn't modify application state
+async function sendSecondRoundVoteMessages(playersRef, snipeData) {
+  const playerRefs = await playersRef.listDocuments();
+  const receiverRefs = playerRefs.filter(ref => ref.id !== snipeData.sniper && ref.id !== snipeData.target);
+  const updatePendingVotes = receiverRefs.map(playerRef =>
+    playerRef.update({ pendingVotes: admin.firestore.FieldValue.arrayUnion(snipeData.snipeID) })
   );
   await Promise.all(updatePendingVotes);
   const { payload, options } = createSnipeVoteMessage(snipeData);
-  const messages = receivers.map(player => sendMessageToUser(player.get("uid"), payload, options));
+  const messages = receiverRefs.map(playerRef => sendMessageToUser(playerRef.id, payload, options));
   await Promise.all(messages);
 }
 
@@ -76,17 +72,18 @@ async function handleTargetVote(transaction, vote, game, snipe) {
   }
 }
 async function handleNonTargetVote(transaction, vote, game, snipe) {
+  // numVoters doesn't include sniper and target
+  const numVoters = game.get("numPlayers") - 2;
   if (vote) {
-    // - 1 because don't include target or sniper but include current vote
-    if (snipe.get("votesFor") - 1 > game.get("numberAlive") / 2) {
+    if (snipe.get("votesFor") + 1 > numVoters / 2) {
       // assumes no writes have happened before this point in the transaction
       await handleSuccessfulSnipe(transaction, game, snipe);
     }
     transaction.update(snipe.ref, { votesFor: snipe.get("votesFor") + 1 });
   }
   else {
-    // - 1 because don't include target or sniper but include current vote
-    if (snipe.get("votesAgainst") - 1 > game.get("numberAlive") / 2) {
+    // break ties by favoring failed snipe
+    if (snipe.get("votesAgainst") + 1 >= numVoters / 2) {
       handleFailedSnipe(transaction, snipe);
     }
     transaction.update(snipe.ref, { votesAgainst: snipe.get("votesAgainst") + 1 });
@@ -217,13 +214,6 @@ function checkPreconditions(game, player, snipe) {
     );
   }
 
-  if (!player.get("alive")) {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      `User with UID ${uid} is not alive in game with gameID ${gameID}`
-    );
-  }
-
   if (!player.get("pendingVotes").includes(snipeID)) {
     throw new functions.https.HttpsError(
       "failed-precondition",
@@ -238,6 +228,7 @@ function checkPreconditions(game, player, snipe) {
     );
   }
 
+  // TODO: should we notify client of this in the response?
   if (snipe.get("status") !== constants.snipeStatus.voting) {
     throw new functions.https.HttpsError(
       "failed-precondition",
