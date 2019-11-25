@@ -41,9 +41,7 @@ state after creation.
 
  - `gameID` - `String` - The id of the game created.
 
-**Implementation Status**: This function is partially implemented. Games can be
-created, but the `invitedUsernames` parameter is ignored since usernames are
-not yet implemented in the database.
+**Implementation Status**: This function is fully implemented.
 
 ### startGame
 **Description**: Used to start an already-created game.
@@ -102,7 +100,7 @@ for the case where the game is already started.
 ### submitVote
 **Description**: Used to submit a vote on whether a snipe was valid.
 
-**Authentication**: Requires authentication as a valid user who is alive within
+**Authentication**: Requires authentication as a valid user who is in
 the designated game and has not yet voted on this snipe.
 
 **Parameters**:
@@ -130,7 +128,7 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Authentication**: Requires authentication as any valid user.
 
-**Parameters**: `friendToAddId` - `Number` - The user id of the friend to add.
+**Parameters**: `friendToAddId` - `String` - The user id of the friend to add.
 
 **Implementation Status**: This function is fully implemented. Note: Future versions of the app might use a "request/accept friend" model, requiring the use of a different cloud function.
 
@@ -139,7 +137,7 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Authentication**: Requires authentication as any valid user.
 
-**Parameters**: `friendToRemoveId` - `Number` - The user id of the friend to remove.
+**Parameters**: `friendToRemoveId` - `String` - The user id of the friend to remove.
 
 **Implementation Status**: This function is fully implemented.
 
