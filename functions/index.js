@@ -16,4 +16,6 @@ exports.addFriend = require("./addFriend");
 exports.removeFriend = require("./removeFriend");
 exports.updateDisplayName = require("./updateDisplayName");
 exports.storageProfilePicOnFinalize = require("./storageProfilePicOnFinalize");
+exports.updateFirebaseInstanceIds = require("./updateFirebaseInstanceIds");
 exports.leaveGame = require("./leaveGame");
+exports.submitVote = require("./submitVote");

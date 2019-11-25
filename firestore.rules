@@ -1,0 +1,12 @@
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{user}/currentGames/{game=**} {
+      // Allow users to view only their own current games
+    	allow read: if request.auth.uid == user;
+    }
+    match /{document=**} {
+      // Allow all logged-in users to read all other parts of the database
+      allow read: if request.auth.uid != null;
+    }
+  }
+}

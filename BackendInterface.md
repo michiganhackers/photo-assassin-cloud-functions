@@ -14,8 +14,13 @@ authenticated for this to occur.
 **Parameters**:
 
  - `displayName` - `String` - The user's display name.
+ - `username` - `String` - The user's username. Must be unique (case insensitive). Automatically converts all characters to lowercase.
 
-**Implementation Status**: This function is fully implemented, but not tested.
+**Returns**:
+
+ - `errorCode` - `String` - `"ok"` if user is successfully created. `"duplicateUsername"` if username already exists.
+
+**Implementation Status**: This function is fully implemented.
 
 ### createGame
 **Description**: Used to create a new game. The game will be in the `notStarted`
@@ -32,9 +37,11 @@ state after creation.
     users who should be invited to the game initially. The array should not
     contain the username of the user who created the game.
 
-**Implementation Status**: This function is partially implemented. Games can be
-created, but the `invitedUsernames` parameter is ignored since usernames are
-not yet implemented in the database.
+**Returns**:
+
+ - `gameID` - `String` - The id of the game created.
+
+**Implementation Status**: This function is fully implemented.
 
 ### startGame
 **Description**: Used to start an already-created game.
@@ -50,8 +57,7 @@ designated as the owner (i.e. creator) of the game to start.
      - Have a status of `notStarted`.
      - Have at least 3 players in the lobby.
 
-**Implementation Status**: Fully implemented (in theory). Note that this
-function is *not* fully tested.
+**Implementation Status**: Fully implemented.
 
 ### submitSnipe
 **Description**: Used to submit a snipe (i.e. picture of target(s)) to one or
@@ -70,8 +76,10 @@ within the designated game(s).
     URI would.
 
 **Implementation Status**: Implemented naively. Does not yet account for images
-that are too big or invalid. Does not handle invalid gameIDs well. *Not tested
-at all*.
+that are too big or invalid.
+**Returns**:
+
+ - `pictureID` - `String` - The pictureID of the snipe submitted.
 
 ### leaveGame
 **Description**: Used to leave a game that the user no longer wishes to
@@ -92,7 +100,7 @@ for the case where the game is already started.
 ### submitVote
 **Description**: Used to submit a vote on whether a snipe was valid.
 
-**Authentication**: Requires authentication as a valid user who is alive within
+**Authentication**: Requires authentication as a valid user who is in
 the designated game and has not yet voted on this snipe.
 
 **Parameters**:
@@ -103,7 +111,7 @@ the designated game and has not yet voted on this snipe.
   - `vote` - `Boolean` - The actual vote. Should be `true` if the user thinks
      the picture is a valid snipe of the target, or `false` otherwise.
 
-**Implementation Status**: Not yet implemented.
+**Implementation Status**: Fully implemented.
 
 ### invalidateSnipes
 **Description**: Used to invalidate snipes that were submitted against a user
@@ -120,7 +128,7 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Authentication**: Requires authentication as any valid user.
 
-**Parameters**: `friendToAddId` - `Number` - The user id of the friend to add.
+**Parameters**: `friendToAddId` - `String` - The user id of the friend to add.
 
 **Implementation Status**: This function is fully implemented. Note: Future versions of the app might use a "request/accept friend" model, requiring the use of a different cloud function.
 
@@ -129,7 +137,7 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Authentication**: Requires authentication as any valid user.
 
-**Parameters**: `friendToRemoveId` - `Number` - The user id of the friend to remove.
+**Parameters**: `friendToRemoveId` - `String` - The user id of the friend to remove.
 
 **Implementation Status**: This function is fully implemented.
 
@@ -141,7 +149,21 @@ in the last *n* minutes, where *n* is a to-be-determined constant.
 
 **Parameters**: `displayName` - `String` - The new display name.
 
-**Implementation Status**: This function is partially implemented. It does not prevent duplicate display names from being created.
+**Implementation Status**: This function is partially implemented.
+
+### updateFirebaseInstanceIds
+**Description**: Used to update the `firebaseInstanceIds` field of the currently logged in user. Note that it is allowed for a user to be logged in on multiple devices and/or use the same device to log into multiple accounts.
+
+**Authentication**: Requires authentication as any valid user.
+
+**Parameters**:
+
+  - `firebaseInstanceId` - `String` - The instance id that will be added or removed
+  - `operation` - `String` - Must be either `"add"` or `"remove"`.  
+  If the value is `"add"`, the given `firebaseInstanceId` will be appended to the `firebaseInstanceIds` field of the currently logged in user. This should be done when the user logs in and when the instance ID is refreshed.  
+  If the value is `"remove"`, the given `firebaseInstanceId` will be removed from the `firebaseInstanceIds` field of the currently logged in user. This should be done when the user logs out.
+
+**Implementation Status**: This function is fully implemented, but subject to change. It might be disallowed for users to be logged in on multiple devices at the same time in the future.
 
 
 ## Triggers

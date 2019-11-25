@@ -5,14 +5,15 @@ const path = require("path");
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const constants = require("./constants");
-const { generateUniqueString, isValidUniqueString } = require("./utilities");
+const { generateUniqueString, isValidUniqueString, reflect, getSnipePicRemoteFilePath } = require("./utilities");
+const { sendMessageToUser, createSnipeVoteMessage } = require("./firebaseCloudMessagingUtilities");
+const { getReadableImageUrl } = require("./utilities");
 
 // Globals
 const firestore = admin.firestore();
 const bucket = admin.storage().bucket();
 const gamesRef = firestore.collection("games");
 const snipePicturesRef = firestore.collection("snipePictures");
-const usersRef = firestore.collection("users");
 
 // Exports
 module.exports = functions.https.onCall(async (data, context) => {
@@ -21,17 +22,16 @@ module.exports = functions.https.onCall(async (data, context) => {
       "unauthenticated", "No authentication was provided"
     );
   }
-  const uid = context.auth.uid;
+
   if (!Array.isArray(data.gameIDs)) {
     throw new functions.https.HttpsError(
       "invalid-argument", "Invalid list of gameIDs provided to submitSnipe"
     );
   }
+
   // Filter the gameIDs to ensure uniqueness (so we don't try to update the same
   //  game two times).
   const gameIDs = [...new Set(data.gameIDs)];
-  const pictureID = generateUniqueString();
-
   if (gameIDs.length === 0) {
     throw new functions.https.HttpsError(
       "invalid-argument",
@@ -39,81 +39,121 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
 
+  gameIDs.forEach(gameID => {
+    if (!isValidUniqueString(gameID)) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Invalid gameID " + gameID + " provided to submitSnipe"
+      );
+    }
+  });
+
   // Create and upload the JPEG picture (provided as a base64 string in
   //  data.base64JPEG).
+  const pictureID = generateUniqueString();
   const tempFilePath = path.join(os.tmpdir(), pictureID + ".jpg");
   await fs.writeFile(
     tempFilePath,
     data.base64JPEG,
     { encoding: "base64" }
   );
+  const remoteFilePath = getSnipePicRemoteFilePath(pictureID);
   await bucket.upload(tempFilePath, {
-    destination: "images/snipes/" + pictureID + ".jpg"
+    destination: remoteFilePath
   });
   await fs.unlink(tempFilePath);
 
   // Add a global snipe with a refCount so we know when to delete the actual
   //  image.
-  // TODO: If the "Add the snipes to each game" step below fails,
-  //  we will have a dangling reference!!
-  snipePicturesRef.doc(pictureID).create({ refCount: gameIDs.length });
+  await snipePicturesRef.doc(pictureID).create({ refCount: 0, pictureID: pictureID });
 
   // Add the snipes to each game.
-  await Promise.all(gameIDs.map(async (gameID) => {
-    // First, ensure that the gameID and UID are valid in this context.
-    if (!isValidUniqueString(gameID)) {
-      // TODO: Use a batch so a partial write doesn't happen here (or below).
-      throw new functions.https.HttpsError(
-        "invalid-argument",
-        "Invalid gameID " + gameID + " provided to submitSnipe"
-      );
+  const snipes = [];
+  const snipePicUrl = await getReadableImageUrl(bucket, remoteFilePath);
+  for (gameID of gameIDs) {
+    const transaction = createSnipeTransaction(gameID, context.auth.uid, pictureID, snipePicUrl);
+    const transactionPromise = firestore.runTransaction(transaction);
+    // reflect the transaction promise so failed snipes don't throw an error
+    // await in loop to prevent transactions from contending for same documents
+    const snipe = await reflect(transactionPromise); //eslint-disable-line no-await-in-loop
+    if (snipe.status === constants.promiseStatus.fulfilled) {
+      snipes.push(snipe.value);
     }
+  }
+
+  // Delete pic if none of the snipes were fulfilled
+  if (snipes.length === 0) {
+    try {
+      await bucket.deleteFiles({
+        prefix: remoteFilePath
+      });
+    } catch (e) {
+      console.log(`picture at ${remoteFilePath} doesn't exist`);
+    }
+  }
+
+  // Send vote notification to target(s)
+  // Note: snipe picture could contain multiple targets for different games
+  // TODO: Consolidate snipes of same target and apply their vote to all games
+  const sendMessagePromises = snipes.map(snipeData => {
+    const { payload, options } = createSnipeVoteMessage(snipeData);
+    return sendMessageToUser(snipeData.target, payload, options);
+  });
+  await Promise.all(sendMessagePromises);
+
+  return {
+    pictureID: pictureID
+  };
+});
+
+function createSnipeTransaction(gameID, sniperUID, pictureID, snipePicUrl) {
+  return async t => {
     const gameRef = gamesRef.doc(gameID);
-    const game = await gameRef.get();
+    const game = await t.get(gameRef);
     if (!game.exists) {
+      console.error(`Snipe submitted to game that doesn't exist with gameID ${game.ref.id}`);
       throw new functions.https.HttpsError(
         "failed-precondition",
         "Invalid gameID " + gameID + " provided to submitSnipe"
       );
     }
-    if (game.get("status") !== constants.status.started) {
+
+    if (game.get("status") !== constants.gameStatus.started) {
       throw new functions.https.HttpsError(
         "failed-precondition",
         "Game with gameID " + gameID + " is not in progress"
       );
     }
-    const userInGame = await gameRef.collection("players").doc(uid).get();
-    if (!userInGame.exists || !userInGame.alive) {
+
+    const playersRef = gamesRef.doc(gameID).collection("players");
+    const sniper = await t.get(playersRef.doc(sniperUID));
+    if (!sniper.exists || !sniper.get("alive")) {
       throw new functions.https.HttpsError(
         "failed-precondition",
-        "User with UID " + uid + " is not alive in game with gameID " + gameID
+        "User with UID " + sniperUID + " is not alive in game with gameID " + gameID
       );
     }
-    const targetUID = userInGame.get("target");
-    const snipeID = generateUniqueString();
+    const snipePicture = await t.get(snipePicturesRef.doc(pictureID));
+    const targetUID = sniper.get("target");
+    const target = await t.get(playersRef.doc(targetUID));
     // Next, create a snipe in the "snipes" collection.
-    await gameRef.collection("snipes").doc(snipeID).create({
+    const snipeID = generateUniqueString();
+    const snipeData = {
       pictureID: pictureID,
-      sniper: uid,
-      status: "voting",
+      sniper: sniperUID,
+      status: constants.snipeStatus.voting,
       target: targetUID,
-      time: new Date(),
+      time: admin.firestore.FieldValue.serverTimestamp(),
       votesAgainst: 0,
-      votesFor: 0
-    });
-    // Finally, add pending votes for all players except the target and sniper.
-    const playersInGame = await gameRef.collection("players").listDocuments();
-    await Promise.all(playersInGame.filter((playerRef) => {
-      return playerRef.id !== uid && playerRef.id !== targetUID;
-    }).map(async (playerRef) => {
-      let pendingVotes = (await playerRef.get()).get("pendingVotes");
-      pendingVotes.push(snipeID);
-      await playerRef.update({
-        pendingVotes: pendingVotes
-      });
-    }));
-  }));
-  return {
-    pictureID: pictureID
-  };
-});
+      votesFor: 0,
+      snipePicUrl: snipePicUrl,
+      snipeID: snipeID
+    };
+    t.create(gameRef.collection("snipes").doc(snipeID), snipeData);
+
+    // Add pending vote to target and increment snipePicture refCount
+    t.update(playersRef.doc(targetUID), { pendingVotes: [...target.get("pendingVotes"), snipeID] });
+    t.update(snipePicturesRef.doc(pictureID), { refCount: snipePicture.get("refCount") + 1, pictureID: pictureID });
+    return snipeData;
+  }
+}

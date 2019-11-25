@@ -3,6 +3,7 @@ const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const constants = require("./constants");
 const { isValidUniqueString, shuffle } = require("./utilities");
+const { sendMessageToUser, createGameStartedMessage } = require("./firebaseCloudMessagingUtilities");
 
 // Globals
 const firestore = admin.firestore();
@@ -24,48 +25,61 @@ module.exports = functions.https.onCall(async (data, context) => {
     );
   }
   const gameRef = gamesRef.doc(gameID);
-  const currentGame = await gameRef.get();
-  if (!currentGame.exists) {
-    throw new functions.https.HttpsError(
-      "failed-precondition", "Invalid gameID " + gameID + " provided to startGame"
-    );
-  }
-  if (currentGame.get("status") !== constants.status.notStarted) {
-    throw new functions.https.HttpsError(
-      "failed-precondition", "Cannot start a game that has already been started"
-    );
-  }
-  const gamePlayersRef = gameRef.collection("players");
-  const userInGameRef = gamePlayersRef.doc(uid);
-  const userInGameData = await userInGameRef.get();
-  if (!userInGameData.exists || !userInGameData.get("isOwner")) {
-    throw new functions.https.HttpsError(
-      "unauthenticated", "User does not have authentication to start game"
-    );
-  }
-  const playerRefs = await gamePlayersRef.listDocuments();
-  if (playerRefs.length < constants.minPlayers) {
-    throw new functions.https.HttpsError(
-      "failed-precondition", "Cannot start a game with fewer than " +
+  const { playerUIDs, gameData } = await firestore.runTransaction(async t => {
+    const currentGame = await t.get(gameRef);
+    if (!currentGame.exists) {
+      throw new functions.https.HttpsError(
+        "failed-precondition", "Invalid gameID " + gameID + " provided to startGame"
+      );
+    }
+    if (currentGame.get("status") !== constants.gameStatus.notStarted) {
+      throw new functions.https.HttpsError(
+        "failed-precondition", "Cannot start a game that has already been started"
+      );
+    }
+    const gamePlayersRef = gameRef.collection("players");
+    const userInGameRef = gamePlayersRef.doc(uid);
+    const userInGameData = await t.get(userInGameRef);
+    if (!userInGameData.exists || !userInGameData.get("isOwner")) {
+      throw new functions.https.HttpsError(
+        "unauthenticated", "User does not have authentication to start game"
+      );
+    }
+    // TODO: what if a document in playerRefs doesn't exist?
+    const playerRefs = await gamePlayersRef.listDocuments();
+    if (playerRefs.length < constants.minPlayers) {
+      throw new functions.https.HttpsError(
+        "failed-precondition", "Cannot start a game with fewer than " +
         constants.minPlayers + " players."
-    );
-  }
-  shuffle(playerRefs);
-  await Promise.all(playerRefs.map((playerRef, i) => {
-    return playerRef.update({
-      alive: true,
-      kills: 0,
-      pendingVotes: [],
-      sniper: i === 0 ? playerRefs[playerRefs.length - 1] : playerRefs[i - 1],
-      target: i === playerRefs.length - 1 ? playerRefs[0] : playerRefs[i + 1]
+      );
+    }
+    shuffle(playerRefs);
+    playerRefs.forEach((playerRef, i) => {
+      t.update(playerRef, {
+        alive: true,
+        kills: 0,
+        pendingVotes: [],
+        sniper: i === 0 ? playerRefs[playerRefs.length - 1].id : playerRefs[i - 1].id,
+        target: i === playerRefs.length - 1 ? playerRefs[0].id : playerRefs[i + 1].id
+      });
+      t.update(usersRef.doc(playerRef.id), { currentGames: admin.firestore.FieldValue.arrayUnion(gameID) })
     });
-  }));
 
-  await gameRef.update({
-    numberAlive: playerRefs.length,
-    startTime: new Date(),
-    status: constants.status.started
+    t.update(gameRef, {
+      numberAlive: playerRefs.length,
+      numPlayers: playerRefs.length,
+      startTime: admin.firestore.FieldValue.serverTimestamp(),
+      status: constants.gameStatus.started
+    });
+
+    const playerUIDs = playerRefs.map(playerRef => playerRef.id);
+    const gameData = { gameID: gameID, name: currentGame.name };
+    return { playerUIDs: playerUIDs, gameData: gameData };
   });
+
+  const { payload, options } = createGameStartedMessage(gameData);
+  const sendMessagePromises = playerUIDs.map(playerUID => sendMessageToUser(playerUID, payload, options));
+  await Promise.all(sendMessagePromises);
 
   return {
     gameID: gameID
