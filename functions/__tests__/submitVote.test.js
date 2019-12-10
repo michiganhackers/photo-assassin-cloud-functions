@@ -124,7 +124,7 @@ test("targets only vote that snipe was valid & only 1 person snipes", async () =
     });
 });
 
-test("half voters vote no leads to unsuccessful snipe", async () => {
+test("half vote no leads to failed snipe", async () => {
     expect.assertions(62);
     const numPlayers = 5;
     const userIDs = await testUtils.addUsers(numPlayers, addUserWrapped);
@@ -245,7 +245,7 @@ test("half voters vote no leads to unsuccessful snipe", async () => {
 });
 
 
-test("majority vote yes leads to successful snipe", async () => {
+test("minority vote no & majority vote yes leads to successful snipe", async () => {
     expect.assertions(9);
     const numPlayers = 6;
     const userIDs = await testUtils.addUsers(numPlayers, addUserWrapped);
@@ -305,7 +305,7 @@ test("majority vote yes leads to successful snipe", async () => {
 });
 
 
-test("half vote no leads to failed snipe", async () => {
+test("half vote yes & half vote no leads to failed snipe", async () => {
     expect.assertions(9);
     const numPlayers = 6;
     const userIDs = await testUtils.addUsers(numPlayers, addUserWrapped);
