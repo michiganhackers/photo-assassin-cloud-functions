@@ -15,7 +15,7 @@ const addUserWrapped = testFunc.wrap(functions.addUser);
 
 afterEach(() => {
     testFunc.cleanup();
-    return testUtils.clearFirestoreData();;
+    return testUtils.clearFirestoreData();
 });
 
 test("game started w/ 4 players has valid default values", async () => {

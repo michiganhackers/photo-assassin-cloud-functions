@@ -12,7 +12,7 @@ const addUserWrapped = testFunc.wrap(functions.addUser);
 
 afterEach(() => {
     testFunc.cleanup();
-    return testUtils.clearFirestoreData();;
+    return testUtils.clearFirestoreData();
 });
 
 test("addUser creates a user with given display name & username (lowercased) and correct default values", async () => {
