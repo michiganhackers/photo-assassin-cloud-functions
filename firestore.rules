@@ -8,5 +8,9 @@ service cloud.firestore {
       // Allow all logged-in users to read all other parts of the database
       allow read: if request.auth.uid != null;
     }
+    match /usernames/{document=**} {
+      // Allow all users to read usernames
+      allow read;
+    }
   }
 }
