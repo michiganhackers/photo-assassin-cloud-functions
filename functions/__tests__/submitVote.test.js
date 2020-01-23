@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 test("targets only vote that snipe was valid & only 1 person snipes", async () => {
-    expect.assertions(124);
+    expect.assertions(130);
     const numPlayers = 6;
     const userIDs = await testUtils.addUsers(numPlayers, addUserWrapped);
     const [ownerUID, ...invitedUIDs] = userIDs;
@@ -118,14 +118,21 @@ test("targets only vote that snipe was valid & only 1 person snipes", async () =
     });
 
     const users = await Promise.all(userIDs.map(id => usersRef.doc(id).get()));
-    users.forEach(user => {
-        expect(user.get("currentGames").length).toBe(0);
-        expect(user.get("completedGames").length).toBe(1);
-    });
+    await Promise.all(users.map(async user => {
+        const currentGames = await user.ref.collection("currentGames").listDocuments();
+        expect(currentGames.length).toBe(0);
+        const completedGames = await user.ref.collection("completedGames").listDocuments();
+        expect(completedGames.length).toBe(1);
+        if(user.get("id") === ownerUID){
+            expect(user.get("gamesWon")).toBe(1);
+        } else{
+            expect(user.get("gamesWon")).toBe(0);
+        }
+    }));
 });
 
 test("half vote no leads to failed snipe", async () => {
-    expect.assertions(62);
+    expect.assertions(67);
     const numPlayers = 5;
     const userIDs = await testUtils.addUsers(numPlayers, addUserWrapped);
     const [ownerUID, ...invitedUIDs] = userIDs;
@@ -238,10 +245,13 @@ test("half vote no leads to failed snipe", async () => {
     }
 
     const users = await Promise.all(userIDs.map(id => usersRef.doc(id).get()));
-    users.forEach(user => {
-        expect(user.get("currentGames").length).toBe(1);
-        expect(typeof user.get("completedGames") === "undefined" || !user.get("completedGames").length).toBe(true);
-    });
+    await Promise.all(users.map(async user => {
+        const currentGames = await user.ref.collection("currentGames").listDocuments();
+        expect(currentGames.length).toBe(1);
+        const completedGames = await user.ref.collection("completedGames").listDocuments();
+        expect(completedGames.length).toBe(0);
+        expect(user.get("gamesWon")).toBe(0);
+    }));
 });
 
 

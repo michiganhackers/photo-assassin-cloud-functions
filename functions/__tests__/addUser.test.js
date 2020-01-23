@@ -36,7 +36,8 @@ test("addUser creates a user with given display name & username (lowercased) and
         username: username.toLowerCase(),
         id: uid,
         kills: 0,
-        longestLifeSeconds: 0
+        longestLifeSeconds: 0,
+        gamesWon: 0
     };
     const user = await usersRef.doc("testUserID").get();
     expect(user.data()).toEqual(userExpected);

@@ -62,7 +62,8 @@ module.exports = functions.https.onCall(async (data, context) => {
         sniper: i === 0 ? playerRefs[playerRefs.length - 1].id : playerRefs[i - 1].id,
         target: i === playerRefs.length - 1 ? playerRefs[0].id : playerRefs[i + 1].id
       });
-      t.update(usersRef.doc(playerRef.id), { currentGames: admin.firestore.FieldValue.arrayUnion(gameID) })
+      const currentGamesRef = usersRef.doc(playerRef.id).collection("currentGames");
+      t.create(currentGamesRef.doc(gameID), {gameID: gameID});
     });
 
     t.update(gameRef, {
