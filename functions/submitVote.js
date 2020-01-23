@@ -133,11 +133,11 @@ async function handleSuccessfulSnipe(transaction, game, snipe) {
 
   if (game.get("numberAlive") - 1 === 1) {
     // sniperPlayerRef is the winner because we know they are alive at this point
-    await handleGameEnded(transaction, game.ref, sniperPlayerRef, targetPlayerRef);
+    await handleGameEnded(transaction, game.ref, sniperPlayerRef, targetPlayerRef, sniperUser);
   }
 }
 
-async function handleGameEnded(transaction, gameRef, winnerPlayerRef, targetPlayerRef) {
+async function handleGameEnded(transaction, gameRef, winnerPlayerRef, targetPlayerRef, winnerUser) {
   // Note: winner doesn't have timeOfDeath, so they aren't included in this query result
   // No need to do this reads with the transaction because none of the fields being read
   // can change at this points
@@ -154,12 +154,13 @@ async function handleGameEnded(transaction, gameRef, winnerPlayerRef, targetPlay
   transaction.update(gameRef, { endTime: admin.firestore.FieldValue.serverTimestamp(), status: constants.gameStatus.ended });
   const playerRefs = await gameRef.collection("players").listDocuments();
   playerRefs.forEach(playerRef => {
-    transaction.update(usersRef.doc(playerRef.id),
-      {
-        currentGames: admin.firestore.FieldValue.arrayRemove(gameRef.id),
-        completedGames: admin.firestore.FieldValue.arrayUnion(gameRef.id)
-      });
+    const userRef = usersRef.doc(playerRef.id);
+    const currentGameRef = userRef.collection("currentGames").doc(gameRef.id);
+    transaction.delete(currentGameRef);
+    const completedGameRef = userRef.collection("completedGames").doc(gameRef.id);
+    transaction.create(completedGameRef, {gameID: gameRef.id});
   });
+  transaction.update(winnerUser.ref, {gamesWon: winnerUser.get("gamesWon") + 1});
 }
 
 function handleFailedSnipe(transaction, snipe) {

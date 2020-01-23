@@ -72,12 +72,10 @@ test("game started w/ 4 players has valid default values", async () => {
         expect(sniper.get("target")).toBe(player.get("uid"));
     });
 
-    const playerUserPromises = await userIDs.map(uid => usersRef.doc(uid).get());
-    const playerUsers = await Promise.all(playerUserPromises);
-    playerUsers.forEach(user => {
-        const currentGames = user.get("currentGames");
+    const userCurrentGames = await Promise.all(userIDs.map(id => usersRef.doc(id).collection("currentGames").listDocuments()));
+    userCurrentGames.forEach(currentGames => {
         expect(currentGames.length).toBe(1);
-        expect(currentGames).toContain(gameID);
+        expect(currentGames[0].id).toBe(gameID);
     });
 });
 
@@ -133,10 +131,11 @@ test("make sure starting multiple games show up in currentGames", async () => {
     const context = { auth: { uid: ownerUID } };
     await Promise.all(gameIDs.map(id => startGameWrapped({ gameID: id }, context)))
 
-    const users = await Promise.all(userIDs.map(id => usersRef.doc(id).get()));
-    users.forEach(user => {
+    const userCurrentGames = await Promise.all(userIDs.map(id => usersRef.doc(id).collection("currentGames").listDocuments()));
+    userCurrentGames.forEach(currentGames => {
+        const currentGameIds = currentGames.map(ref => ref.id);
         gameIDs.forEach(gameID => {
-            expect(user.get("currentGames")).toContain(gameID);
+            expect(currentGameIds).toContain(gameID);
         });
     });
 });

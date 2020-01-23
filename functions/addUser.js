@@ -46,7 +46,8 @@ module.exports = functions.https.onCall(async (data, context) => {
         username: usernameLower,
         id: uid,
         kills: 0,
-        longestLifeSeconds: 0
+        longestLifeSeconds: 0,
+        gamesWon: 0
       });
       t.create(usernamesRef.doc(usernameLower), { username: usernameLower, uid: uid });
 
