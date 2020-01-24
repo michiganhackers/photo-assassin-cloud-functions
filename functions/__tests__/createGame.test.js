@@ -96,4 +96,7 @@ test("game created w/ 3 invited players contains 4 players w/ valid default valu
     players.forEach(player => {
         expect(playersExpected).toContainEqual(player.data());
     });
+    const ownerCurrentGame = await usersRef.doc(uid).
+      collection("currentGames").doc(gameID).get();
+    expect(ownerCurrentGame.exists).toBe(true);
 });

@@ -71,11 +71,19 @@ module.exports = functions.https.onCall(async (data, context) => {
   const ownerPlayerPromise = playersRef.doc(uid).create({
     isOwner: true,
     uid: uid
+  }).then(() => {
+    return usersRef.doc(uid).collection("currentGames").doc(gameID).create({
+      // No data needed
+    });
   });
   const invitedPlayersPromises = invitedUIDs.map(invitedUID => {
     return playersRef.doc(invitedUID).create({
       isOwner: false,
       uid: invitedUID
+    }).then(() => {
+      return usersRef.doc(uid).collection("currentGames").doc(gameID).create({
+        // No data needed
+      });
     });
   });
   await Promise.all([ownerPlayerPromise, ...invitedPlayersPromises]);
